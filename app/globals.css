@@ -148,3 +148,17 @@ body {
   .sidebar.open { transform: translateX(0); }
   .main { margin-left: 0; }
 }
+/* This ensures the main area is always clickable */
+.main {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  z-index: 100;
+}
+
+button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
