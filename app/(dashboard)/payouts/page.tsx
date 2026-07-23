@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { useToast } from "@/components/Toast";
+import { useBatchPayouts } from "@/lib/hooks/useBatchPayouts";
 import { getBatchPayoutContract, BATCH_PAYOUT_ADDRESS } from "@/lib/web3/contracts";
 import { usdcToWei, formatUsdc } from "@/lib/web3/format";
 import { explorerTxUrl, ARC_TESTNET } from "@/lib/web3/chain";
@@ -11,8 +12,9 @@ import { explorerTxUrl, ARC_TESTNET } from "@/lib/web3/chain";
 type Row = { address: string; amount: string };
 
 export default function PayoutsPage() {
-  const { address, getSigner } = useWallet();
+  const { address, getSigner, refreshBalance } = useWallet();
   const { showToast } = useToast();
+  const { payouts, loading: payoutsLoading, recordPayout } = useBatchPayouts();
   const [rows, setRows] = useState<Row[]>([{ address: "", amount: "" }]);
   const [submitting, setSubmitting] = useState(false);
   const [feeBps, setFeeBps] = useState(100);
@@ -74,6 +76,18 @@ export default function PayoutsPage() {
       await tx.wait();
 
       setLastTx(tx.hash);
+      await recordPayout({
+        txHash: tx.hash,
+        recipientCount: validRows.length,
+        totalNative: totals.subtotal.toString(),
+        feeNative: totals.fee.toString(),
+      }).catch(() => {
+        // History recording failing shouldn't hide that the payout itself
+        // succeeded — the tx already confirmed on-chain either way.
+        showToast("⚠️", "Payout sent, but saving it to history failed — it's still real on-chain.", "error");
+      });
+      refreshBalance();
+
       showToast("🚀", `Batch payout of ${formatUsdc(totals.subtotal)} USDC sent to ${validRows.length} wallets!`, "success");
       setRows([{ address: "", amount: "" }]);
     } catch (err) {
@@ -84,55 +98,89 @@ export default function PayoutsPage() {
   }
 
   return (
-    <div className="two-col" style={{ marginBottom: 24 }}>
-      <div className="card">
-        <div className="card-header"><span className="card-title">🚀 Batch Payout</span></div>
-        <div className="card-body">
-          <div style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 16 }}>
-            Send USDC to multiple wallets in a single on-chain transaction via the FinFlowBatchPayout contract.
-          </div>
-
-          {!BATCH_PAYOUT_ADDRESS && (
-            <div style={{ background: "var(--amber-light)", border: "1px solid var(--amber)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "var(--amber)" }}>
-              BatchPayout contract not deployed yet. Run <code>npm run contracts:deploy</code> and set NEXT_PUBLIC_BATCHPAYOUT_ADDRESS.
+    <div>
+      <div className="two-col" style={{ marginBottom: 24 }}>
+        <div className="card">
+          <div className="card-header"><span className="card-title">🚀 Batch Payout</span></div>
+          <div className="card-body">
+            <div style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 16 }}>
+              Send USDC to multiple wallets in a single on-chain transaction via the FinFlowBatchPayout contract.
             </div>
-          )}
 
-          <div>
-            {rows.map((row, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 120px auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                <input className="form-input" placeholder="Wallet address (0x…)" value={row.address} onChange={(e) => updateRow(i, "address", e.target.value)} />
-                <input className="form-input" placeholder="USDC" type="number" value={row.amount} onChange={(e) => updateRow(i, "amount", e.target.value)} />
-                <button className="btn btn-danger btn-sm" onClick={() => removeRow(i)} disabled={rows.length === 1}>✕</button>
+            {!BATCH_PAYOUT_ADDRESS && (
+              <div style={{ background: "var(--amber-light)", border: "1px solid var(--amber)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "var(--amber)" }}>
+                BatchPayout contract not deployed yet. Run <code>npm run contracts:deploy</code> and set NEXT_PUBLIC_BATCHPAYOUT_ADDRESS.
               </div>
-            ))}
-          </div>
-          <button className="btn btn-secondary btn-sm" style={{ marginBottom: 16 }} onClick={addRow}>+ Add Recipient</button>
+            )}
 
-          <div className="divider" />
-          <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Subtotal</span><span className="mono">{formatUsdc(totals.subtotal)} USDC</span></div>
-          <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Platform Fee ({(feeBps / 100).toFixed(2)}%)</span><span className="mono" style={{ color: "var(--red)" }}>-{formatUsdc(totals.fee)} USDC</span></div>
-          <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Network Fee</span><span className="mono" style={{ color: "var(--ink3)" }}>~$0.001</span></div>
-          <div className="fee-row"><span>Total Deducted</span><span className="mono">{formatUsdc(totals.total)} USDC</span></div>
-
-          <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleSubmit} disabled={submitting || totals.validRows === 0}>
-            {submitting ? <span className="spinner" /> : null} {submitting ? "Sending…" : "Send Batch Payout"}
-          </button>
-
-          {lastTx && (
-            <div style={{ marginTop: 12, fontSize: 12, textAlign: "center" }}>
-              <a href={explorerTxUrl(lastTx)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>View last payout on Arc Explorer →</a>
+            <div>
+              {rows.map((row, i) => (
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 120px auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                  <input className="form-input" placeholder="Wallet address (0x…)" value={row.address} onChange={(e) => updateRow(i, "address", e.target.value)} />
+                  <input className="form-input" placeholder="USDC" type="number" value={row.amount} onChange={(e) => updateRow(i, "amount", e.target.value)} />
+                  <button className="btn btn-danger btn-sm" onClick={() => removeRow(i)} disabled={rows.length === 1}>✕</button>
+                </div>
+              ))}
             </div>
-          )}
+            <button className="btn btn-secondary btn-sm" style={{ marginBottom: 16 }} onClick={addRow}>+ Add Recipient</button>
+
+            <div className="divider" />
+            <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Subtotal</span><span className="mono">{formatUsdc(totals.subtotal)} USDC</span></div>
+            <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Platform Fee ({(feeBps / 100).toFixed(2)}%)</span><span className="mono" style={{ color: "var(--red)" }}>-{formatUsdc(totals.fee)} USDC</span></div>
+            <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Network Fee</span><span className="mono" style={{ color: "var(--ink3)" }}>~$0.001</span></div>
+            <div className="fee-row"><span>Total Deducted</span><span className="mono">{formatUsdc(totals.total)} USDC</span></div>
+
+            <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleSubmit} disabled={submitting || totals.validRows === 0}>
+              {submitting ? <span className="spinner" /> : null} {submitting ? "Sending…" : "Send Batch Payout"}
+            </button>
+
+            {lastTx && (
+              <div style={{ marginTop: 12, fontSize: 12, textAlign: "center" }}>
+                <a href={explorerTxUrl(lastTx)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>View last payout on Arc Explorer →</a>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><span className="card-title">💼 How it works</span></div>
+          <div className="card-body" style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.8 }}>
+            <p>Add each recipient&apos;s wallet address and the USDC amount they should receive.</p>
+            <p style={{ marginTop: 10 }}>Everything sends in <strong>one transaction</strong> via <code>disperseNative()</code> — recipients get their exact listed amount, and the platform fee is added on top, not deducted from what they receive.</p>
+            <p style={{ marginTop: 10, color: "var(--ink3)" }}>Up to 200 recipients per batch. Team &amp; payroll wallet presets are on the roadmap — for now, paste addresses directly.</p>
+          </div>
         </div>
       </div>
 
       <div className="card">
-        <div className="card-header"><span className="card-title">💼 How it works</span></div>
-        <div className="card-body" style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.8 }}>
-          <p>Add each recipient&apos;s wallet address and the USDC amount they should receive.</p>
-          <p style={{ marginTop: 10 }}>Everything sends in <strong>one transaction</strong> via <code>disperseNative()</code> — recipients get their exact listed amount, and the platform fee is added on top, not deducted from what they receive.</p>
-          <p style={{ marginTop: 10, color: "var(--ink3)" }}>Up to 200 recipients per batch. Team &amp; payroll wallet presets are on the roadmap — for now, paste addresses directly.</p>
+        <div className="card-header"><span className="card-title">Payout History</span></div>
+        <div className="card-body" style={{ padding: 0 }}>
+          {payoutsLoading ? (
+            <div className="empty-state"><div className="empty-desc">Loading…</div></div>
+          ) : payouts.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">🚀</div>
+              <div className="empty-title">No batch payouts yet</div>
+              <div className="empty-desc">Send your first one above and it'll show up here.</div>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>RECIPIENTS</th><th>TOTAL SENT</th><th>FEE</th><th>DATE</th><th>EXPLORER</th></tr></thead>
+                <tbody>
+                  {payouts.map((p) => (
+                    <tr key={p.id}>
+                      <td className="mono">{p.recipientCount} wallets</td>
+                      <td className="mono" style={{ fontWeight: 600, color: "var(--green)" }}>{formatUsdc(p.totalNative)} USDC</td>
+                      <td className="mono" style={{ color: "var(--ink3)" }}>{formatUsdc(p.feeNative)} USDC</td>
+                      <td style={{ color: "var(--ink3)", fontSize: 12 }}>{new Date(p.createdAt).toLocaleString()}</td>
+                      <td><a href={explorerTxUrl(p.txHash)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", fontSize: 12 }}>View →</a></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

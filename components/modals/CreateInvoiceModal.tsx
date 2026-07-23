@@ -12,7 +12,7 @@ import { usdcToWei } from "@/lib/web3/format";
 export function CreateInvoiceModal() {
   const { modal, close } = useModal();
   const open = modal === "create-invoice";
-  const { getSigner, address } = useWallet();
+  const { getSigner, address, refreshBalance } = useWallet();
   const { showToast } = useToast();
   const { createInvoice } = useInvoices();
   const { createPaymentLink } = usePaymentLinks();
@@ -79,6 +79,7 @@ export function CreateInvoiceModal() {
 
       showToast("🧾", `Invoice #${chainInvoiceId} created & sent! Link: /pay/${link.slug}`, "success");
       setForm({ clientName: "", clientEmail: "", amount: "", dueDate: "", description: "" });
+      refreshBalance();
       close();
     } catch (err) {
       showToast("❌", (err as Error).message || "Failed to create invoice", "error");

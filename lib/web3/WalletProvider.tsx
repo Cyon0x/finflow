@@ -182,6 +182,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [state.kind]);
 
   const authCacheRef = useRef<AuthPayload | null>(null);
+  // Holds the in-flight signing promise so concurrent callers (e.g. several
+  // data hooks mounting on the same page load) await ONE signature instead
+  // of each independently deciding "no cache yet" and popping their own
+  // MetaMask prompt — that race is what caused users to see up to 8 sign
+  // requests on a single page load.
+  const pendingAuthRef = useRef<Promise<AuthPayload> | null>(null);
   const AUTH_CACHE_TTL_MS = 4 * 60 * 1000; // server allows 5 min; reuse for 4 to stay safely inside that window
 
   const signAuthPayload = useCallback(async (): Promise<AuthPayload> => {
@@ -193,12 +199,24 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       return cached;
     }
 
-    const signer = await getSigner();
-    const timestamp = Date.now();
-    const signature = await signer.signMessage(buildAuthMessage(state.address, timestamp));
-    const payload = { address: state.address, signature, timestamp };
-    authCacheRef.current = payload;
-    return payload;
+    if (pendingAuthRef.current) return pendingAuthRef.current;
+
+    const address = state.address;
+    const signPromise = (async () => {
+      const signer = await getSigner();
+      const timestamp = Date.now();
+      const signature = await signer.signMessage(buildAuthMessage(address, timestamp));
+      const payload = { address, signature, timestamp };
+      authCacheRef.current = payload;
+      return payload;
+    })();
+
+    pendingAuthRef.current = signPromise;
+    try {
+      return await signPromise;
+    } finally {
+      pendingAuthRef.current = null;
+    }
   }, [state.address, state.kind, getSigner]);
 
   useEffect(() => {

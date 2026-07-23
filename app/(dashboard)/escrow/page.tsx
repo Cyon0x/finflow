@@ -13,7 +13,7 @@ export default function EscrowPage() {
   const { escrows, loading, syncEscrow } = useEscrows();
   const { open } = useModal();
   const { showToast } = useToast();
-  const { getSigner } = useWallet();
+  const { getSigner, refreshBalance } = useWallet();
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const totals = useMemo(() => {
@@ -32,6 +32,7 @@ export default function EscrowPage() {
       showToast("⏳", "Waiting for confirmation…");
       await tx.wait();
       await syncEscrow(escrowId);
+      refreshBalance();
       showToast("✅", "Escrow released!", "success");
     } catch (err) {
       showToast("❌", (err as Error).message || "Release failed", "error");
@@ -49,6 +50,7 @@ export default function EscrowPage() {
       const tx = await contract.refundExpired(chainEscrowId);
       await tx.wait();
       await syncEscrow(escrowId);
+      refreshBalance();
       showToast("↩️", "Funds reclaimed after deadline.", "success");
     } catch (err) {
       showToast("❌", (err as Error).message || "Refund failed", "error");

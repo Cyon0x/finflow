@@ -5,6 +5,7 @@ import { useWallet } from "@/lib/web3/WalletProvider";
 import { useTheme } from "@/lib/theme";
 import { shortAddr } from "@/lib/web3/format";
 import { NotifPanel } from "./NotifPanel";
+import { WalletMenu } from "./WalletMenu";
 
 const PAGE_TITLES: Record<string, string> = {
   dashboard: "Dashboard",
@@ -30,7 +31,7 @@ export function Topbar({
   onOpenWalletModal: () => void;
   onNewPayment: () => void;
 }) {
-  const { address, disconnect } = useWallet();
+  const { address } = useWallet();
   const { theme, toggleTheme } = useTheme();
   const [notifOpen, setNotifOpen] = useState(false);
 
@@ -51,9 +52,13 @@ export function Topbar({
         </button>
         <button className="topbar-btn primary" onClick={onNewPayment}>+ New Payment</button>
         {address ? (
-          <button className="topbar-btn" style={{ borderColor: "var(--green)", color: "var(--green)" }} onClick={disconnect} title="Click to disconnect">
-            ✓ {shortAddr(address)}
-          </button>
+          <WalletMenu
+            trigger={
+              <button className="topbar-btn" style={{ borderColor: "var(--green)", color: "var(--green)" }}>
+                ✓ {shortAddr(address)}
+              </button>
+            }
+          />
         ) : (
           <button className="topbar-btn" style={{ borderColor: "var(--accent)", color: "var(--accent)" }} onClick={onOpenWalletModal}>
             🔗 Connect Wallet

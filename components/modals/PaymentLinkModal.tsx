@@ -13,8 +13,12 @@ import { usdcToWei } from "@/lib/web3/format";
 //  - ONE_TIME: backed by a real FinFlowTreasury invoice (payInvoice(id)) —
 //    fixed amount, closes itself once paid, overpayment auto-refunded by
 //    the contract.
-//  - OPEN: payer sends any amount directly to the treasury contract
-//    (its receive() fallback) — no fixed target, reusable indefinitely.
+//  - OPEN: payer sends any amount directly, peer-to-peer, to this link's
+//    creator (see app/pay/[slug]/page.tsx) — no fixed target, reusable
+//    indefinitely. Deliberately NOT routed through FinFlowTreasury: that
+//    contract has a single owner who alone can withdraw funds it holds, so
+//    sending other merchants' Open Amount payments through it would trap
+//    their money under someone else's key.
 // Recurring billing isn't implemented: the deployed contract has no
 // subscription logic, and faking recurrence with a plain link would be
 // exactly the kind of decorative feature this rebuild is trying to avoid.
@@ -22,7 +26,7 @@ import { usdcToWei } from "@/lib/web3/format";
 export function PaymentLinkModal() {
   const { modal, close } = useModal();
   const open = modal === "payment-link";
-  const { getSigner, address } = useWallet();
+  const { getSigner, address, refreshBalance } = useWallet();
   const { showToast } = useToast();
   const { createPaymentLink } = usePaymentLinks();
   const { createInvoice } = useInvoices();
@@ -84,6 +88,7 @@ export function PaymentLinkModal() {
 
       showToast("🔗", `Payment link created: /pay/${link.slug}`, "success");
       setForm({ name: "", amount: "", type: "ONE_TIME", note: "" });
+      refreshBalance();
       close();
     } catch (err) {
       showToast("❌", (err as Error).message || "Failed to create link", "error");

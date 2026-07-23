@@ -11,7 +11,7 @@ import { usdcToWei } from "@/lib/web3/format";
 export function CreateEscrowModal() {
   const { modal, close } = useModal();
   const open = modal === "create-escrow";
-  const { getSigner, address } = useWallet();
+  const { getSigner, address, refreshBalance } = useWallet();
   const { showToast } = useToast();
   const { recordEscrow } = useEscrows();
   const [submitting, setSubmitting] = useState(false);
@@ -61,6 +61,7 @@ export function CreateEscrowModal() {
 
       showToast("🔒", `Escrow #${chainEscrowId} funded on Arc Testnet!`, "success");
       setForm({ contractor: "", amount: "", milestone: "", deadline: "" });
+      refreshBalance();
       close();
     } catch (err) {
       showToast("❌", (err as Error).message || "Failed to create escrow", "error");

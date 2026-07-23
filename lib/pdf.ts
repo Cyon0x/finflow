@@ -1,10 +1,12 @@
-import { jsPDF } from "jspdf";
 import { weiToUsdc } from "./web3/format";
 import type { ClientInvoice } from "./types";
 import { TREASURY_ADDRESS } from "./web3/contracts";
 import { explorerTxUrl } from "./web3/chain";
 
-export function downloadInvoicePdf(invoice: ClientInvoice, merchantLabel = "FinFlow Merchant") {
+// jsPDF (~280kB) is loaded on demand, only when someone actually clicks
+// "PDF" — not bundled into every /invoices page load.
+export async function downloadInvoicePdf(invoice: ClientInvoice, merchantLabel = "FinFlow Merchant") {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const left = 48;
   let y = 64;

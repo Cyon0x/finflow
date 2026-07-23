@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { useToast } from "@/components/Toast";
 import { WalletModal } from "@/components/WalletModal";
-import { getTreasuryContract, TREASURY_ADDRESS } from "@/lib/web3/contracts";
+import { getTreasuryContract } from "@/lib/web3/contracts";
 import { usdcToWei, formatUsdc, shortAddr } from "@/lib/web3/format";
 import { explorerTxUrl } from "@/lib/web3/chain";
 import type { ClientPaymentLink } from "@/lib/types";
 
 export default function PayLinkPage({ params }: { params: { slug: string } }) {
-  const { address, getSigner } = useWallet();
+  const { address, getSigner, refreshBalance } = useWallet();
   const { showToast } = useToast();
   const [link, setLink] = useState<ClientPaymentLink | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,13 +56,19 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
           return;
         }
         showToast("✍️", "Confirm the payment in your wallet…");
-        const tx = await signer.sendTransaction({ to: TREASURY_ADDRESS, value: usdcToWei(openAmount) });
+        // Open Amount links are peer-to-peer, straight to the link creator's
+        // own wallet — never through the shared FinFlowTreasury contract.
+        // Treasury is single-owner (only its owner can withdraw funds it
+        // holds), so routing arbitrary merchants' Open Amount payments
+        // through it would trap their money under someone else's key.
+        const tx = await signer.sendTransaction({ to: link.ownerAddress, value: usdcToWei(openAmount) });
         showToast("⏳", "Waiting for confirmation on Arc Testnet…");
         await tx.wait();
         setPaidTx(tx.hash);
         await fetch(`/api/payment-links/${params.slug}`, { method: "POST" });
       }
 
+      refreshBalance();
       showToast("🎉", "Payment sent!", "success");
     } catch (err) {
       showToast("❌", (err as Error).message || "Payment failed", "error");

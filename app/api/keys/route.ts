@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { extractAuthFromQuery, verifyAuthBody } from "@/lib/apiAuth";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function GET(req: NextRequest) {
   const owner = extractAuthFromQuery(req);
@@ -16,6 +17,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "keys-create", { limit: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
   const body = await req.json();
   const owner = verifyAuthBody(body.auth);
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -148,3 +148,18 @@ model SyncCursor {
   lastBlock Int      @default(0)
   updatedAt DateTime @updatedAt
 }
+
+// Batch payouts settle in a single FinFlowBatchPayout.disperseNative() call —
+// there's no per-payout on-chain id to key off like invoices/escrows have,
+// so the tx hash is the natural unique key here.
+model BatchPayoutRecord {
+  id             String   @id @default(cuid())
+  ownerAddress   String // sender
+  txHash         String   @unique
+  recipientCount Int
+  totalNative    String // sum sent to recipients, wei-precision, excludes fee
+  feeNative      String
+  createdAt      DateTime @default(now())
+
+  @@index([ownerAddress])
+}

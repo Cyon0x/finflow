@@ -34,10 +34,12 @@ Next.js 14 (App Router) + TypeScript, Prisma/Postgres, ethers v6, Hardhat + Open
 
 ```bash
 npm install
-cp .env.example .env   # fill in DATABASE_URL at minimum
-npm run db:push        # create tables
+cp .env.example .env       # fill in DATABASE_URL at minimum
+npx prisma migrate deploy  # applies committed migrations — safe, non-interactive
 npm run dev
 ```
+
+Changing `prisma/schema.prisma`? Run `npm run db:migrate` (wraps `prisma migrate dev`) to generate a new migration file — commit the generated `prisma/migrations/*` folder. `npm run build` runs `prisma migrate deploy` automatically, so every Vercel deploy applies pending migrations before building — no manual `db push` step needed anymore.
 
 Contract addresses in `.env.example` are already live on Arc Testnet — you don't need to redeploy to run the app locally. If you do want your own copies:
 
@@ -50,9 +52,8 @@ npm run contracts:deploy
 ## Deploying
 
 1. **Database**: create a free Postgres at [neon.tech](https://neon.tech), copy the connection string.
-2. **Vercel**: import this GitHub repo at vercel.com → New Project. Add env vars from `.env.example` (at minimum `DATABASE_URL`; contract addresses already default correctly). Deploy.
-3. **After first deploy**: run `npx prisma db push` locally against the production `DATABASE_URL` to create tables (or wire a build-step migration if you prefer).
-4. **Cron**: `vercel.json` schedules a daily reconciliation job (`/api/cron/sync`) — Vercel's Hobby plan caps cron at once/day, which is why this is a backstop, not the primary data path. Invoice/escrow status updates immediately when a payment happens through the app; the cron just catches anything that happened outside it.
+2. **Vercel**: import this GitHub repo at vercel.com → New Project. Add env vars from `.env.example` (at minimum `DATABASE_URL`; contract addresses already default correctly). Deploy — the build applies migrations automatically.
+3. **Cron**: `vercel.json` schedules a daily reconciliation job (`/api/cron/sync`) — Vercel's Hobby plan caps cron at once/day, which is why this is a backstop, not the primary data path. Invoice/escrow status updates immediately when a payment happens through the app; the cron just catches anything that happened outside it.
 
 ## API & Dev
 
@@ -64,4 +65,5 @@ Two key-gated endpoints under `/api/v1/`, authenticated via `Authorization: Bear
 ## Known follow-ups
 
 - Next.js is pinned to 14.2.35 (latest patched 14.x). A move to Next 15/16 is worth doing later but wasn't done here to avoid an untested major-version jump mid-build.
-- No automated Prisma migration step in the Vercel build — `db push` is manual for now.
+- Rate limiting (`lib/rateLimit.ts`) is in-memory and per-instance — a reasonable deterrent against naive spam, but not a distributed guarantee across Vercel's serverless instances. For hard protection, enable Vercel's Firewall / Attack Challenge Mode in the dashboard (no code required).
+- Wallet-signature auth for reads (not just writes) means every data-fetching hook needs a signature — mitigated by an in-flight-request dedupe plus a 4-minute client-side cache (`lib/web3/WalletProvider.tsx`), so in practice it's one signature per ~4 minutes of browsing, not one per request.

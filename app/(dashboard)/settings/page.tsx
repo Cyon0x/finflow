@@ -11,7 +11,7 @@ import { ARC_TESTNET } from "@/lib/web3/chain";
 const FREE_TIER_LIMIT = 50;
 
 export default function SettingsPage() {
-  const { address, getSigner } = useWallet();
+  const { address, getSigner, refreshBalance } = useWallet();
   const { showToast } = useToast();
   const { invoices } = useInvoices();
   const [escrowFeeBps, setEscrowFeeBps] = useState<number | null>(null);
@@ -45,6 +45,7 @@ export default function SettingsPage() {
       const tx = await contract.setFeeBps(bpsValue);
       showToast("⏳", "Confirming fee update on-chain…");
       await tx.wait();
+      refreshBalance();
       showToast("✅", "Fee updated on-chain!", "success");
     } catch (err) {
       showToast("❌", (err as Error).message || "Failed to update fee", "error");

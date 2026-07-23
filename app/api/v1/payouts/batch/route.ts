@@ -4,6 +4,7 @@ import { authenticateApiKey } from "@/lib/apiKeyAuth";
 import { getBatchPayoutContract, BATCH_PAYOUT_ADDRESS } from "@/lib/web3/contracts";
 import { getServerReadProvider } from "@/lib/web3/activity";
 import { ARC_TESTNET_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
+import { rateLimit } from "@/lib/rateLimit";
 
 // Public developer API — builds (but does not sign or send) a batch payout
 // transaction. FinFlow is non-custodial: this backend has no private key to
@@ -11,6 +12,9 @@ import { ARC_TESTNET_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 // caller's own wallet/backend to sign, mirroring how most non-custodial
 // wallet-as-a-service APIs work.
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "v1-payouts-batch", { limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const owner = await authenticateApiKey(req);
   if (!owner) return NextResponse.json({ error: "Invalid or missing API key" }, { status: 401 });
   if (!BATCH_PAYOUT_ADDRESS) return NextResponse.json({ error: "BatchPayout contract not deployed" }, { status: 503 });

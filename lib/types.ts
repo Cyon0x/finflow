@@ -80,3 +80,13 @@ export type ClientEscrowRecord = {
   txHashRelease: string | null;
   createdAt: string;
 };
+
+export type ClientBatchPayoutRecord = {
+  id: string;
+  ownerAddress: string;
+  txHash: string;
+  recipientCount: number;
+  totalNative: string;
+  feeNative: string;
+  createdAt: string;
+};

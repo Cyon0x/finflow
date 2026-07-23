@@ -4,9 +4,17 @@ import { Providers } from "./providers";
 import { NO_FLASH_THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
+const SITE_URL = "https://finflow-ebon-iota.vercel.app";
+const TITLE = "FinFlow — Stablecoin Payments on Arc";
+const DESCRIPTION =
+  "Send, receive, and manage USDC payments on Arc Testnet. Invoices, payment links, escrow, and payroll — non-custodial.";
+
 export const metadata: Metadata = {
-  title: "FinFlow — Stablecoin Payments on Arc",
-  description: "Send, receive, and manage USDC payments on Arc Testnet. Invoices, payment links, escrow, and payroll — non-custodial.",
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION, url: SITE_URL, siteName: "FinFlow", type: "website" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

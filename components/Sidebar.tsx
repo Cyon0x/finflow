@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { formatUsdc, shortAddr } from "@/lib/web3/format";
+import { WalletMenu } from "@/components/WalletMenu";
 
 const NAV_SECTIONS: { label: string; items: { href: string; icon: string; label: string; badge?: string }[] }[] = [
   {
@@ -81,13 +82,24 @@ export function Sidebar({
       ))}
 
       <div className="sidebar-footer">
-        <div className="wallet-pill" onClick={onOpenWalletModal}>
-          <div className="wallet-label">{address ? `${kind?.toUpperCase()} CONNECTED` : "WALLET"}</div>
-          <div className="wallet-addr">{address ? shortAddr(address) : "Not connected"}</div>
-          <div className="wallet-net">
-            {address ? `Arc Testnet · ${balanceWei !== null ? formatUsdc(balanceWei) : "…"} USDC` : "Connect your wallet"}
+        {address ? (
+          <WalletMenu
+            openDirection="up"
+            trigger={
+              <div className="wallet-pill">
+                <div className="wallet-label">{kind?.toUpperCase()} CONNECTED</div>
+                <div className="wallet-addr">{shortAddr(address)}</div>
+                <div className="wallet-net">Arc Testnet · {balanceWei !== null ? formatUsdc(balanceWei) : "…"} USDC · tap to manage</div>
+              </div>
+            }
+          />
+        ) : (
+          <div className="wallet-pill" onClick={onOpenWalletModal}>
+            <div className="wallet-label">WALLET</div>
+            <div className="wallet-addr">Not connected</div>
+            <div className="wallet-net">Connect your wallet</div>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   );
