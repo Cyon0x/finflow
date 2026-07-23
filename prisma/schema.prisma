@@ -1,0 +1,150 @@
+// FinFlow database schema.
+//
+// Design note: FinFlow is non-custodial and wallet-authenticated. There is no
+// email/password login. Every mutating write is scoped to `ownerAddress`
+// (the lowercased connected wallet address) and authenticated by a
+// personal_sign signature verified server-side — see lib/auth.ts.
+//
+// On-chain data (invoice paid/unpaid, escrow state, actual balances) is the
+// source of truth. Rows here are a fast-query cache/metadata layer synced by
+// app/api/cron/sync/route.ts, never the other way around.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentLinkType {
+  ONE_TIME
+  RECURRING
+  OPEN
+}
+
+enum TeamRole {
+  ADMIN
+  FINANCE
+  VIEWER
+}
+
+enum ApiKeyEnv {
+  LIVE
+  TEST
+}
+
+model Invoice {
+  id              String        @id @default(cuid())
+  chainInvoiceId  Int?          @unique // FinFlowTreasury invoice id, set once the createInvoice tx confirms
+  ownerAddress    String // merchant wallet (lowercased)
+  clientName      String
+  clientEmail     String?
+  description     String
+  amountNative    String // wei-precision string, 18 decimals (native USDC on Arc)
+  status          InvoiceStatus @default(PENDING)
+  issueDate       DateTime      @default(now())
+  dueDate         DateTime
+  txHashCreate    String?
+  txHashPay       String?
+  payerAddress    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  paymentLink     PaymentLink?
+
+  @@index([ownerAddress])
+}
+
+model PaymentLink {
+  id           String          @id @default(cuid())
+  slug         String          @unique
+  ownerAddress String
+  type         PaymentLinkType @default(ONE_TIME)
+  title        String
+  amountNative String // wei-precision string; ignored/optional for OPEN type
+  note         String?
+  active       Boolean         @default(true)
+  invoiceId    String?         @unique
+  invoice      Invoice?        @relation(fields: [invoiceId], references: [id])
+  paidCount    Int             @default(0)
+  createdAt    DateTime        @default(now())
+
+  @@index([ownerAddress])
+}
+
+model TeamMember {
+  id            String   @id @default(cuid())
+  ownerAddress  String // the workspace owner (whose treasury this is)
+  memberAddress String
+  memberLabel   String?
+  role          TeamRole @default(VIEWER)
+  createdAt     DateTime @default(now())
+
+  @@unique([ownerAddress, memberAddress])
+  @@index([ownerAddress])
+}
+
+model ApiKey {
+  id           String    @id @default(cuid())
+  ownerAddress String
+  label        String
+  env          ApiKeyEnv @default(TEST)
+  keyPrefix    String // e.g. ff_test_9x2kq8 — safe to display
+  keyHash      String // sha256 of the full secret — full secret is shown once, never stored
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+
+  @@index([ownerAddress])
+}
+
+model Webhook {
+  id           String   @id @default(cuid())
+  ownerAddress String
+  url          String
+  secret       String
+  createdAt    DateTime @default(now())
+
+  @@index([ownerAddress])
+}
+
+model OfframpWaitlistEntry {
+  id        String   @id @default(cuid())
+  address   String
+  email     String?
+  currency  String
+  createdAt DateTime @default(now())
+
+  @@index([address])
+}
+
+model EscrowRecord {
+  id             String    @id @default(cuid())
+  chainEscrowId  Int       @unique
+  ownerAddress   String // depositor
+  contractor     String
+  amountNative   String
+  milestone      String
+  deadline       DateTime
+  released       Boolean   @default(false)
+  txHashCreate   String?
+  txHashRelease  String?
+  createdAt      DateTime  @default(now())
+
+  @@index([ownerAddress])
+}
+
+// Singleton row bookmarking the last block scanned by the event-sync cron.
+model SyncCursor {
+  id        String   @id @default("main")
+  lastBlock Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
