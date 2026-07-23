@@ -8,10 +8,14 @@ import { BATCH_PAYOUT_ABI } from "./abi/batchPayout";
 export const TREASURY_ADDRESS =
   process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "0x41BF49FD0606e525b73866BF54e063De5556F4bF";
 
-// Escrow and BatchPayout are deployed by scripts/deploy.js — addresses land
-// here via env vars once that's run. Empty until then.
-export const ESCROW_ADDRESS = process.env.NEXT_PUBLIC_ESCROW_ADDRESS || "";
-export const BATCH_PAYOUT_ADDRESS = process.env.NEXT_PUBLIC_BATCHPAYOUT_ADDRESS || "";
+// Deployed and verified on Arc Testnet via scripts/deploy.js — see
+// https://testnet.arcscan.app/address/0x337bC1C478172A799aBe2134a98aBBAcA3418FF2
+// and .../0x823B02D1857B191FcA211d9679C8377D8Abe3B09. Env vars override
+// these if you redeploy your own copies.
+export const ESCROW_ADDRESS =
+  process.env.NEXT_PUBLIC_ESCROW_ADDRESS || "0x337bC1C478172A799aBe2134a98aBBAcA3418FF2";
+export const BATCH_PAYOUT_ADDRESS =
+  process.env.NEXT_PUBLIC_BATCHPAYOUT_ADDRESS || "0x823B02D1857B191FcA211d9679C8377D8Abe3B09";
 
 export function getTreasuryContract(signerOrProvider: ethers.Signer | ethers.Provider) {
   return new ethers.Contract(TREASURY_ADDRESS, TREASURY_ABI, signerOrProvider);
