@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   const owner = verifyAuthBody(body.auth);
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { clientName, clientEmail, description, amountNative, dueDate, chainInvoiceId, txHashCreate } = body;
+  const { businessName, clientName, clientEmail, description, amountNative, dueDate, chainInvoiceId, txHashCreate } = body;
   if (!clientName || !description || !amountNative || !dueDate || !chainInvoiceId) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   const invoice = await prisma.invoice.create({
     data: {
       ownerAddress: owner,
+      businessName: businessName || null,
       clientName,
       clientEmail: clientEmail || null,
       description,

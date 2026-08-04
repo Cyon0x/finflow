@@ -8,6 +8,7 @@ export type ClientInvoice = {
   id: string;
   chainInvoiceId: number | null;
   ownerAddress: string;
+  businessName: string | null;
   clientName: string;
   clientEmail: string | null;
   description: string;
@@ -29,13 +30,25 @@ export type ClientPaymentLink = {
   id: string;
   slug: string;
   ownerAddress: string;
+  businessName: string | null;
   type: PaymentLinkType;
   title: string;
   amountNative: string;
   note: string | null;
   active: boolean;
   invoiceId: string | null;
-  invoice?: { chainInvoiceId: number | null; status: InvoiceStatus } | null;
+  // The list endpoint (/api/payment-links) only returns chainInvoiceId +
+  // status. The single-link endpoint (/api/payment-links/[slug]), used by
+  // the public pay page, returns the full invoice — hence these being
+  // optional rather than assuming both callers get the same shape.
+  invoice?: {
+    chainInvoiceId: number | null;
+    status: InvoiceStatus;
+    businessName?: string | null;
+    clientName?: string;
+    description?: string;
+    dueDate?: string;
+  } | null;
   paidCount: number;
   createdAt: string;
 };

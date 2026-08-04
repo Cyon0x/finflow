@@ -10,7 +10,7 @@ export function usePaymentLinks() {
   const { authedFetch } = useApi();
 
   const createPaymentLink = useCallback(
-    async (input: { title: string; amountNative?: string; type?: string; note?: string; invoiceId?: string }) => {
+    async (input: { title: string; amountNative?: string; type?: string; note?: string; invoiceId?: string; businessName?: string }) => {
       const json = await authedFetch("/api/payment-links", { method: "POST", body: JSON.stringify(input) });
       await refetch();
       return json.link as ClientPaymentLink;

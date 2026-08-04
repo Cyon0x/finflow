@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useInvoices } from "@/lib/hooks/useInvoices";
 import { getEscrowContract, getBatchPayoutContract, ESCROW_ADDRESS, BATCH_PAYOUT_ADDRESS } from "@/lib/web3/contracts";
 import { ARC_TESTNET } from "@/lib/web3/chain";
+import { getSavedBusinessName, saveBusinessName } from "@/lib/businessProfile";
 
 const FREE_TIER_LIMIT = 50;
 
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const { address, getSigner, refreshBalance } = useWallet();
   const { showToast } = useToast();
   const { invoices } = useInvoices();
+  const [businessName, setBusinessName] = useState("");
   const [escrowFeeBps, setEscrowFeeBps] = useState<number | null>(null);
   const [payoutFeeBps, setPayoutFeeBps] = useState<number | null>(null);
   const [escrowOwner, setEscrowOwner] = useState<string | null>(null);
@@ -22,6 +24,15 @@ export default function SettingsPage() {
 
   const isEscrowOwner = address && escrowOwner && address.toLowerCase() === escrowOwner.toLowerCase();
   const isPayoutOwner = address && payoutOwner && address.toLowerCase() === payoutOwner.toLowerCase();
+
+  useEffect(() => {
+    setBusinessName(getSavedBusinessName());
+  }, []);
+
+  function handleSaveBusinessName() {
+    saveBusinessName(businessName);
+    showToast("✅", "Business name saved — it'll prefill on new invoices and links.", "success");
+  }
 
   useEffect(() => {
     const provider = new ethers.JsonRpcProvider(ARC_TESTNET.rpcUrls[0]);
@@ -72,8 +83,18 @@ export default function SettingsPage() {
                 <label className="form-label">Connected Wallet</label>
                 <input className="form-input mono" value={address || "Not connected"} readOnly />
               </div>
-              <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-                FinFlow has no separate login — your wallet address is your account. There is nothing else to configure here.
+              <div className="form-group">
+                <label className="form-label">Business Name</label>
+                <input
+                  className="form-input"
+                  placeholder="e.g. Kwame Asante Design Studio"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                />
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={handleSaveBusinessName}>Save</button>
+              <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 12 }}>
+                Shown on invoices and payment pages you create. Stored on this device only (not a login) — FinFlow has no separate account system, your wallet address is your account.
               </div>
             </div>
           </div>

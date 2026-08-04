@@ -11,6 +11,7 @@ export function useInvoices() {
 
   const createInvoice = useCallback(
     async (input: {
+      businessName?: string;
       clientName: string;
       clientEmail?: string;
       description: string;

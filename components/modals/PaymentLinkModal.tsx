@@ -7,7 +7,9 @@ import { useToast } from "@/components/Toast";
 import { usePaymentLinks } from "@/lib/hooks/usePaymentLinks";
 import { useInvoices } from "@/lib/hooks/useInvoices";
 import { getTreasuryContract } from "@/lib/web3/contracts";
-import { usdcToWei } from "@/lib/web3/format";
+import { usdcToWei, formatUsdc } from "@/lib/web3/format";
+import { getSavedBusinessName, saveBusinessName } from "@/lib/businessProfile";
+import { PaymentLinkShare } from "@/components/PaymentLinkShare";
 
 // Payment links come in two real flavors:
 //  - ONE_TIME: backed by a real FinFlowTreasury invoice (payInvoice(id)) —
@@ -23,6 +25,8 @@ import { usdcToWei } from "@/lib/web3/format";
 // subscription logic, and faking recurrence with a plain link would be
 // exactly the kind of decorative feature this rebuild is trying to avoid.
 
+const emptyForm = () => ({ businessName: getSavedBusinessName(), name: "", amount: "", type: "ONE_TIME", note: "" });
+
 export function PaymentLinkModal() {
   const { modal, close } = useModal();
   const open = modal === "payment-link";
@@ -31,9 +35,16 @@ export function PaymentLinkModal() {
   const { createPaymentLink } = usePaymentLinks();
   const { createInvoice } = useInvoices();
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: "", amount: "", type: "ONE_TIME", note: "" });
+  const [form, setForm] = useState(emptyForm);
+  const [success, setSuccess] = useState<{ url: string; title: string; amountLabel?: string } | null>(null);
 
   if (!open) return null;
+
+  function handleClose() {
+    setForm(emptyForm());
+    setSuccess(null);
+    close();
+  }
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -68,6 +79,7 @@ export function PaymentLinkModal() {
         if (chainInvoiceId === null) throw new Error("Could not read invoice id from receipt");
 
         const invoice = await createInvoice({
+          businessName: form.businessName || undefined,
           clientName: form.name,
           description: form.note || form.name,
           amountNative,
@@ -84,12 +96,16 @@ export function PaymentLinkModal() {
         type: form.type,
         note: form.note || undefined,
         invoiceId,
+        businessName: form.businessName || undefined,
       });
 
-      showToast("🔗", `Payment link created: /pay/${link.slug}`, "success");
-      setForm({ name: "", amount: "", type: "ONE_TIME", note: "" });
+      if (form.businessName) saveBusinessName(form.businessName);
       refreshBalance();
-      close();
+      setSuccess({
+        url: `${window.location.origin}/pay/${link.slug}`,
+        title: form.name,
+        amountLabel: form.type === "ONE_TIME" ? `${formatUsdc(amountNative)} USDC` : undefined,
+      });
     } catch (err) {
       showToast("❌", (err as Error).message || "Failed to create link", "error");
     } finally {
@@ -98,47 +114,63 @@ export function PaymentLinkModal() {
   }
 
   return (
-    <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && close()}>
+    <div className="modal-overlay open" onClick={(e) => e.target === e.currentTarget && handleClose()}>
       <div className="modal">
-        <div className="modal-close" onClick={close}>✕</div>
-        <div className="modal-title">🔗 Create Payment Link</div>
-        <div className="modal-sub">Share a link to receive USDC payments instantly</div>
+        <div className="modal-close" onClick={handleClose}>✕</div>
 
-        <div className="form-group">
-          <label className="form-label">Link Name</label>
-          <input className="form-input" placeholder="e.g. Design Services, Consulting" value={form.name} onChange={set("name")} />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Type</label>
-          <select className="form-input" value={form.type} onChange={set("type")}>
-            <option value="ONE_TIME">One-time Payment (fixed amount, on-chain invoice)</option>
-            <option value="OPEN">Open Amount (payer chooses, direct transfer)</option>
-          </select>
-        </div>
-        {form.type === "ONE_TIME" && (
-          <div className="form-group">
-            <label className="form-label">Amount (USDC)</label>
-            <div className="input-prefix">
-              <div className="input-prefix-label">USDC</div>
-              <input className="form-input" type="number" placeholder="0.00" value={form.amount} onChange={set("amount")} />
+        {success ? (
+          <>
+            <PaymentLinkShare url={success.url} title={success.title} amountLabel={success.amountLabel} />
+            <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 20 }} onClick={handleClose}>
+              Done
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="modal-title">🔗 Create Payment Link</div>
+            <div className="modal-sub">Share a link to receive USDC payments instantly</div>
+
+            <div className="form-group">
+              <label className="form-label">Your Business Name (optional)</label>
+              <input className="form-input" placeholder="e.g. Kwame Asante Design Studio" value={form.businessName} onChange={set("businessName")} />
             </div>
-          </div>
+            <div className="form-group">
+              <label className="form-label">Link Name</label>
+              <input className="form-input" placeholder="e.g. Design Services, Consulting" value={form.name} onChange={set("name")} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Type</label>
+              <select className="form-input" value={form.type} onChange={set("type")}>
+                <option value="ONE_TIME">One-time Payment (fixed amount, on-chain invoice)</option>
+                <option value="OPEN">Open Amount (payer chooses, direct transfer)</option>
+              </select>
+            </div>
+            {form.type === "ONE_TIME" && (
+              <div className="form-group">
+                <label className="form-label">Amount (USDC)</label>
+                <div className="input-prefix">
+                  <div className="input-prefix-label">USDC</div>
+                  <input className="form-input" type="number" placeholder="0.00" value={form.amount} onChange={set("amount")} />
+                </div>
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label">Note (optional)</label>
+              <input className="form-input" placeholder="Invoice ref, work description…" value={form.note} onChange={set("note")} />
+            </div>
+
+            <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "var(--ink3)" }}>
+              <span style={{ fontWeight: 500, color: "var(--ink2)" }}>Fee:</span> $0 platform fee — FinFlowTreasury takes no cut, you receive the full amount. Payer only pays Arc network gas.
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={handleSubmit} disabled={submitting}>
+                {submitting ? <span className="spinner" /> : null} {submitting ? "Working…" : "Generate Link"}
+              </button>
+              <button className="btn btn-secondary" onClick={handleClose} disabled={submitting}>Cancel</button>
+            </div>
+          </>
         )}
-        <div className="form-group">
-          <label className="form-label">Note (optional)</label>
-          <input className="form-input" placeholder="Invoice ref, work description…" value={form.note} onChange={set("note")} />
-        </div>
-
-        <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "var(--ink3)" }}>
-          <span style={{ fontWeight: 500, color: "var(--ink2)" }}>Fee:</span> $0 platform fee — FinFlowTreasury takes no cut, you receive the full amount. Payer only pays Arc network gas.
-        </div>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <span className="spinner" /> : null} {submitting ? "Working…" : "Generate Link"}
-          </button>
-          <button className="btn btn-secondary" onClick={close} disabled={submitting}>Cancel</button>
-        </div>
       </div>
     </div>
   );

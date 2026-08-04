@@ -46,6 +46,7 @@ model Invoice {
   id              String        @id @default(cuid())
   chainInvoiceId  Int?          @unique // FinFlowTreasury invoice id, set once the createInvoice tx confirms
   ownerAddress    String // merchant wallet (lowercased)
+  businessName    String? // merchant-entered display name, shown on the public /pay page
   clientName      String
   clientEmail     String?
   description     String
@@ -67,6 +68,7 @@ model PaymentLink {
   id           String          @id @default(cuid())
   slug         String          @unique
   ownerAddress String
+  businessName String? // used on the public pay page for OPEN links (no backing invoice to read it from)
   type         PaymentLinkType @default(ONE_TIME)
   title        String
   amountNative String // wei-precision string; ignored/optional for OPEN type

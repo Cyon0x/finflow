@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const owner = verifyAuthBody(body.auth);
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { title, amountNative, type, note, invoiceId } = body;
+  const { title, amountNative, type, note, invoiceId, businessName } = body;
   if (!title) return NextResponse.json({ error: "Missing title" }, { status: 400 });
   if (type !== "OPEN" && !amountNative) return NextResponse.json({ error: "Missing amount" }, { status: 400 });
 
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     data: {
       slug,
       ownerAddress: owner,
+      businessName: businessName || null,
       title,
       amountNative: String(amountNative || "0"),
       type: type || "ONE_TIME",

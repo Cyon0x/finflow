@@ -10,7 +10,7 @@ Everything below executes a real transaction on Arc Testnet or reads real on-cha
 - **Invoices & payments** — [`FinFlowTreasury`](https://testnet.arcscan.app/address/0x41BF49FD0606e525b73866BF54e063De5556F4bF) (deployed before this rebuild, verified source in `contracts/reference/`). `createInvoice` / `payInvoice` are called directly from the connected wallet.
 - **Escrow** — [`FinFlowEscrow`](https://testnet.arcscan.app/address/0x337bC1C478172A799aBe2134a98aBBAcA3418FF2), deployed and verified by this repo. Depositor locks funds, releases to the contractor when satisfied, or reclaims after the deadline if never released.
 - **Batch payouts** — [`FinFlowBatchPayout`](https://testnet.arcscan.app/address/0x823B02D1857B191FcA211d9679C8377D8Abe3B09), deployed and verified by this repo. Sends USDC to up to 200 recipients in one transaction.
-- **Payment links** — real, shareable `/pay/[slug]` URLs backed by an on-chain invoice (fixed amount) or a direct-transfer "open amount" link.
+- **Payment links** — real, shareable `/pay/[slug]` URLs backed by an on-chain invoice (fixed amount) or a direct-transfer "open amount" link. Creating one shows a branded, gradient-rounded-module QR code (via `qr-code-styling`, high error correction, FinFlow mark embedded in the center) with PNG/SVG/PDF export and one-tap WhatsApp/Telegram/Email/X sharing.
 - **PDF invoices/receipts** — generated client-side, includes the real tx hash and contract address.
 - **Live FX rates** — NGN/KES/GHS/ZAR via a free public API (USDC ≈ USD peg).
 - **API keys & webhooks** — real key generation (SHA-256 hashed, shown once), and two key-gated public endpoints under `/api/v1/*` (see [API & Dev](#api--dev) below).

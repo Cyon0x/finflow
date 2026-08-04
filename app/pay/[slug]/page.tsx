@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { useToast } from "@/components/Toast";
 import { WalletModal } from "@/components/WalletModal";
+import { BrandedQRCode } from "@/components/BrandedQRCode";
+import { StatusBadge } from "@/components/StatusBadge";
 import { getTreasuryContract } from "@/lib/web3/contracts";
 import { usdcToWei, formatUsdc, shortAddr } from "@/lib/web3/format";
 import { explorerTxUrl } from "@/lib/web3/chain";
@@ -18,14 +20,17 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
   const [openAmount, setOpenAmount] = useState("");
   const [paying, setPaying] = useState(false);
   const [paidTx, setPaidTx] = useState<string | null>(null);
+  const [pageUrl, setPageUrl] = useState("");
 
   useEffect(() => {
+    setPageUrl(window.location.href);
     fetch(`/api/payment-links/${params.slug}`)
       .then((r) => r.json())
       .then((json) => setLink(json.link || null))
       .finally(() => setLoading(false));
   }, [params.slug]);
 
+  const businessName = link?.invoice?.businessName || link?.businessName || null;
   const alreadyPaid = link?.invoice?.status === "PAID";
 
   async function handlePay() {
@@ -93,28 +98,63 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
     );
   }
 
+  const paid = alreadyPaid || Boolean(paidTx);
+
   return (
     <CenteredShell>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/finflow-mark.svg" alt="FinFlow" width={40} height={40} style={{ borderRadius: 10, marginBottom: 8 }} />
         <div className="ff-logo" style={{ color: "var(--ink)", fontSize: "1.6rem" }}>Fin<span style={{ color: "var(--accent)" }}>Flow</span></div>
         <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>Secure payment on Arc Testnet</div>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ marginBottom: 20 }}>
         <div className="card-body">
-          <div style={{ textAlign: "center", marginBottom: 20 }}>
-            <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 4 }}>{link.note || "Payment request"}</div>
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            {businessName && (
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 2 }}>{businessName}</div>
+            )}
+            <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 4 }}>{link.note || link.invoice?.description || "Payment request"}</div>
             <div className="modal-title" style={{ fontSize: "1.3rem" }}>{link.title}</div>
+
             {link.invoice ? (
-              <div style={{ fontFamily: "'Clash Display',sans-serif", fontSize: "2.2rem", fontWeight: 700, marginTop: 10 }}>
-                {formatUsdc(link.amountNative)} <span style={{ fontSize: "1rem", color: "var(--ink3)" }}>USDC</span>
-              </div>
+              <>
+                <div style={{ fontFamily: "'Clash Display',sans-serif", fontSize: "2.2rem", fontWeight: 700, marginTop: 10 }}>
+                  {formatUsdc(link.amountNative)} <span style={{ fontSize: "1rem", color: "var(--ink3)" }}>USDC</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  {link.invoice.chainInvoiceId != null && <span className="badge badge-gray">Invoice #{link.invoice.chainInvoiceId}</span>}
+                  <StatusBadge status={paid ? "PAID" : link.invoice.status} />
+                </div>
+              </>
             ) : (
               <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>Open amount — you choose how much to send</div>
             )}
           </div>
 
-          {alreadyPaid || paidTx ? (
+          {(link.invoice?.clientName || link.invoice?.dueDate) && (
+            <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12.5 }}>
+              {link.invoice?.clientName && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                  <span style={{ color: "var(--ink3)" }}>Billed to</span>
+                  <span style={{ color: "var(--ink)", fontWeight: 500 }}>{link.invoice.clientName}</span>
+                </div>
+              )}
+              {link.invoice?.dueDate && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                  <span style={{ color: "var(--ink3)" }}>Due date</span>
+                  <span style={{ color: "var(--ink)", fontWeight: 500 }}>{new Date(link.invoice.dueDate).toLocaleDateString()}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                <span style={{ color: "var(--ink3)" }}>Currency</span>
+                <span style={{ color: "var(--ink)", fontWeight: 500 }}>USDC (native, Arc Testnet)</span>
+              </div>
+            </div>
+          )}
+
+          {paid ? (
             <div className="empty-state">
               <div className="empty-icon">✅</div>
               <div className="empty-title">Payment received</div>
@@ -134,7 +174,7 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
 
               {address ? (
                 <button className="btn btn-primary btn-lg" style={{ width: "100%", justifyContent: "center" }} onClick={handlePay} disabled={paying}>
-                  {paying ? <span className="spinner" /> : null} {paying ? "Processing…" : `Pay with ${shortAddr(address)}`}
+                  {paying ? <span className="spinner" /> : null} {paying ? "Processing…" : `Pay Now — ${shortAddr(address)}`}
                 </button>
               ) : (
                 <button className="btn btn-primary btn-lg" style={{ width: "100%", justifyContent: "center" }} onClick={() => setWalletModalOpen(true)}>
@@ -148,6 +188,13 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
           )}
         </div>
       </div>
+
+      {pageUrl && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <BrandedQRCode value={pageUrl} size={160} />
+          <div style={{ fontSize: 11, color: "var(--ink3)" }}>Scan to open this page on your phone</div>
+        </div>
+      )}
 
       <WalletModal open={walletModalOpen} onClose={() => setWalletModalOpen(false)} />
     </CenteredShell>
