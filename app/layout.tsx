@@ -1,3 +1,4 @@
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Providers } from "./providers";
@@ -7,7 +8,7 @@ import "./globals.css";
 const SITE_URL = "https://finflow-ebon-iota.vercel.app";
 const TITLE = "FinFlow — Stablecoin Payments on Arc";
 const DESCRIPTION =
-  "Send, receive, and manage USDC payments on Arc Testnet. Invoices, payment links, escrow, and payroll — non-custodial.";
+  `Send, receive, and manage USDC payments on ${ARC_NETWORK_LABEL}. Invoices, payment links, escrow, and payroll — non-custodial.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

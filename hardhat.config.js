@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
+const arcNetworks = require("./config/arc-networks.json");
 
 const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
 const accounts =
@@ -17,21 +18,34 @@ module.exports = {
   },
   networks: {
     hardhat: {},
+    arcMainnet: {
+      url: process.env.ARC_MAINNET_RPC_URL || arcNetworks.mainnet.rpcUrl,
+      chainId: arcNetworks.mainnet.chainId,
+      accounts,
+    },
     arcTestnet: {
-      url: "https://rpc.testnet.arc.network",
-      chainId: 5042002,
+      url: process.env.ARC_TESTNET_RPC_URL || arcNetworks.testnet.rpcUrl,
+      chainId: arcNetworks.testnet.chainId,
       accounts,
     },
   },
   etherscan: {
-    apiKey: { arcTestnet: "not-needed-for-blockscout" },
+    apiKey: { arcMainnet: "not-needed-for-blockscout", arcTestnet: "not-needed-for-blockscout" },
     customChains: [
+      {
+        network: "arcMainnet",
+        chainId: arcNetworks.mainnet.chainId,
+        urls: {
+          apiURL: `${arcNetworks.mainnet.explorerUrl}/api`,
+          browserURL: arcNetworks.mainnet.explorerUrl,
+        },
+      },
       {
         network: "arcTestnet",
         chainId: 5042002,
         urls: {
-          apiURL: "https://testnet.arcscan.app/api",
-          browserURL: "https://testnet.arcscan.app",
+          apiURL: `${arcNetworks.testnet.explorerUrl}/api`,
+          browserURL: arcNetworks.testnet.explorerUrl,
         },
       },
     ],

@@ -1,3 +1,4 @@
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
@@ -41,7 +42,7 @@ export default async function OpengraphImage() {
             color: "#7EB8FF",
           }}
         >
-          USDC · Arc Testnet · Non-custodial
+          USDC · {ARC_NETWORK_LABEL} · Non-custodial
         </div>
       </div>
     ),

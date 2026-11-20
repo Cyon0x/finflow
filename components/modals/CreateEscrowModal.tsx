@@ -1,11 +1,14 @@
 "use client";
 
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+
 import { useState } from "react";
 import { useModal } from "@/lib/modals";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { useToast } from "@/components/Toast";
 import { useEscrows } from "@/lib/hooks/useEscrows";
 import { getEscrowContract, ESCROW_ADDRESS } from "@/lib/web3/contracts";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 import { usdcToWei } from "@/lib/web3/format";
 
 export function CreateEscrowModal() {
@@ -23,7 +26,7 @@ export function CreateEscrowModal() {
 
   async function handleSubmit() {
     if (!address) return showToast("🔗", "Connect a wallet first.", "error");
-    if (!ESCROW_ADDRESS) return showToast("🚧", "Escrow contract isn't deployed yet — run `npm run contracts:deploy`.", "error");
+    if (!ESCROW_ADDRESS) return showToast("🚧", "Escrow is temporarily unavailable.", "error");
     if (!form.contractor || !form.amount || !form.milestone || !form.deadline) {
       return showToast("❌", "Fill in all fields.", "error");
     }
@@ -37,8 +40,8 @@ export function CreateEscrowModal() {
       const deadlineTs = Math.floor(new Date(form.deadline).getTime() / 1000);
 
       showToast("✍️", "Confirm the transaction in your wallet…");
-      const tx = await escrow.createEscrow(form.contractor, form.milestone.slice(0, 200), deadlineTs, { value: amountWei });
-      showToast("⏳", "Waiting for confirmation on Arc Testnet…");
+      const tx = await escrow.createEscrow(form.contractor, form.milestone.slice(0, 200), deadlineTs, { ...await arcTransactionOverrides(signer), value: amountWei });
+      showToast("⏳", `Waiting for confirmation on ${ARC_NETWORK_LABEL}…`);
       const receipt = await tx.wait();
 
       let chainEscrowId: number | null = null;
@@ -59,7 +62,7 @@ export function CreateEscrowModal() {
         txHashCreate: tx.hash,
       });
 
-      showToast("🔒", `Escrow #${chainEscrowId} funded on Arc Testnet!`, "success");
+      showToast("🔒", `Escrow #${chainEscrowId} funded on ${ARC_NETWORK_LABEL}!`, "success");
       setForm({ contractor: "", amount: "", milestone: "", deadline: "" });
       refreshBalance();
       close();
@@ -98,7 +101,7 @@ export function CreateEscrowModal() {
         </div>
 
         <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "var(--ink3)" }}>
-          Funds locked in FinFlowEscrow on Arc Testnet. You (the depositor) control release — 1% fee on release. If you never release, you can reclaim funds after the deadline passes.
+          Funds locked in FinFlowEscrow on {ARC_NETWORK_LABEL}. You (the depositor) control release — 1% fee on release. If you never release, you can reclaim funds after the deadline passes.
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>

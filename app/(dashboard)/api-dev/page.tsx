@@ -5,6 +5,7 @@ import { useApiKeys } from "@/lib/hooks/useApiKeys";
 import { useWebhooks } from "@/lib/hooks/useWebhooks";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { useToast } from "@/components/Toast";
+import { ARC_API_KEY_ENV, ARC_NETWORK_LABEL } from "@/lib/web3/chain";
 
 export default function ApiDevPage() {
   const { address } = useWallet();
@@ -50,11 +51,11 @@ export default function ApiDevPage() {
           <div className="card-header">
             <span className="card-title">API Keys</span>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => handleGenerate("TEST")}>+ Test Key</button>
-              <button className="btn btn-primary btn-sm" onClick={() => handleGenerate("LIVE")}>+ Live Key</button>
+              <button className="btn btn-primary btn-sm" onClick={() => handleGenerate(ARC_API_KEY_ENV)}>+ {ARC_API_KEY_ENV === "LIVE" ? "Live" : "Test"} Key</button>
             </div>
           </div>
           <div className="card-body">
+            <p style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 12 }}>Keys created here work on {ARC_NETWORK_LABEL}.</p>
             {justGenerated && (
               <div style={{ background: "var(--surface2)", border: "1px solid var(--accent)", borderRadius: 8, padding: 12, marginBottom: 16 }}>
                 <div style={{ fontSize: 11, color: "var(--ink3)", marginBottom: 4 }}>NEW KEY — copy now, shown once:</div>

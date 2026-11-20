@@ -1,14 +1,12 @@
 import { ethers } from "ethers";
-import { ARC_TESTNET } from "./chain";
+import { ARC_NETWORK, ARC_CHAIN_ID_DECIMAL, ARC_DEPLOYMENT } from "./chain";
 import { getTreasuryContract, getEscrowContract, getBatchPayoutContract, TREASURY_ADDRESS, ESCROW_ADDRESS, BATCH_PAYOUT_ADDRESS } from "./contracts";
 
-// FinFlowTreasury's deployment block on Arc Testnet — event scans start here,
-// never from block 0 (the chain is already past block 53M; scanning from
-// genesis would be enormously wasteful and likely to hit RPC range limits).
-export const TREASURY_DEPLOY_BLOCK = 40305528;
+// Start event scans at this network's actual Treasury deployment block.
+export const TREASURY_DEPLOY_BLOCK = ARC_DEPLOYMENT.contracts.FinFlowTreasury.blockNumber;
 
 export function getServerReadProvider() {
-  return new ethers.JsonRpcProvider(ARC_TESTNET.rpcUrls[0]);
+  return new ethers.JsonRpcProvider(ARC_NETWORK.rpcUrls[0], { chainId: ARC_CHAIN_ID_DECIMAL, name: "arc" });
 }
 
 export type InvoiceOnChain = {

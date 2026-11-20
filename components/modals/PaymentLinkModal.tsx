@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { usePaymentLinks } from "@/lib/hooks/usePaymentLinks";
 import { useInvoices } from "@/lib/hooks/useInvoices";
 import { getTreasuryContract } from "@/lib/web3/contracts";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 import { usdcToWei, formatUsdc } from "@/lib/web3/format";
 import { getSavedBusinessName, saveBusinessName } from "@/lib/businessProfile";
 import { PaymentLinkShare } from "@/components/PaymentLinkShare";
@@ -66,7 +67,7 @@ export function PaymentLinkModal() {
         amountNative = amountWei.toString();
 
         showToast("✍️", "Confirm the transaction in your wallet…");
-        const tx = await treasury.createInvoice(amountWei, form.name.slice(0, 120));
+        const tx = await treasury.createInvoice(amountWei, form.name.slice(0, 120), await arcTransactionOverrides(signer));
         const receipt = await tx.wait();
 
         let chainInvoiceId: number | null = null;

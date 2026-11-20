@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerReadProvider, getInvoiceOnChain, getEscrowOnChain } from "@/lib/web3/activity";
 import { weiToUsdc } from "@/lib/web3/format";
+import { ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 
 // Daily reconciliation pass (Vercel Hobby plan caps cron at once/day — see
 // vercel.json). This is a backstop, not the primary data path: when a user
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
   const results = { invoicesChecked: 0, invoicesUpdated: 0, escrowsChecked: 0, escrowsUpdated: 0, errors: [] as string[] };
 
   const pendingInvoices = await prisma.invoice.findMany({
-    where: { status: "PENDING", chainInvoiceId: { not: null } },
+    where: { chainId: ARC_CHAIN_ID_DECIMAL, status: { in: ["PENDING", "OVERDUE"] }, chainInvoiceId: { not: null } },
     take: 200,
   });
 
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
   }
 
   const pendingEscrows = await prisma.escrowRecord.findMany({
-    where: { released: false },
+    where: { chainId: ARC_CHAIN_ID_DECIMAL, released: false },
     take: 200,
   });
 
@@ -88,7 +89,7 @@ async function fireWebhooks(ownerAddress: string, event: string, payload: Record
       fetch(wh.url, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-FinFlow-Secret": wh.secret },
-        body: JSON.stringify({ event, data: payload, sentAt: new Date().toISOString() }),
+        body: JSON.stringify({ event, chainId: ARC_CHAIN_ID_DECIMAL, data: payload, sentAt: new Date().toISOString() }),
       })
     )
   );

@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { ethers } from "ethers";
-import { ARC_TESTNET, ARC_TESTNET_CHAIN_ID_HEX } from "./chain";
+import { ARC_NETWORK, ARC_CHAIN_ID_HEX, ARC_CHAIN_ID_DECIMAL, ARC_NETWORK_LABEL, ARC_NETWORK_NAME } from "./chain";
 import { useToast } from "@/components/Toast";
 import { buildAuthMessage, type AuthPayload } from "@/lib/auth";
 
@@ -43,7 +43,7 @@ type WalletContextValue = WalletState & {
 
 const WalletContext = createContext<WalletContextValue | null>(null);
 
-const READ_RPC_URL = ARC_TESTNET.rpcUrls[0];
+const READ_RPC_URL = ARC_NETWORK.rpcUrls[0];
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useToast();
@@ -64,8 +64,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const getReadProvider = useCallback(() => {
     if (!readProviderRef.current) {
       readProviderRef.current = new ethers.JsonRpcProvider(READ_RPC_URL, {
-        chainId: parseInt(ARC_TESTNET_CHAIN_ID_HEX, 16),
-        name: "arc-testnet",
+        chainId: parseInt(ARC_CHAIN_ID_HEX, 16),
+        name: `arc-${ARC_NETWORK_NAME}`,
       });
     }
     return readProviderRef.current;
@@ -101,22 +101,25 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const ensureArcNetwork = useCallback(async (provider: Eip1193Provider) => {
     const currentChainId = (await provider.request({ method: "eth_chainId" })) as string;
-    if (currentChainId.toLowerCase() === ARC_TESTNET_CHAIN_ID_HEX.toLowerCase()) return;
+    if (currentChainId.toLowerCase() === ARC_CHAIN_ID_HEX.toLowerCase()) return;
 
     try {
       await provider.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: ARC_TESTNET_CHAIN_ID_HEX }],
+        params: [{ chainId: ARC_CHAIN_ID_HEX }],
       });
     } catch (switchErr: unknown) {
       const code = (switchErr as { code?: number })?.code;
       if (code === 4902 || code === -32603) {
-        await provider.request({ method: "wallet_addEthereumChain", params: [ARC_TESTNET] });
-        showToast("⛓️", "Arc Testnet added to your wallet!", "success");
+        await provider.request({ method: "wallet_addEthereumChain", params: [ARC_NETWORK] });
+        await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: ARC_CHAIN_ID_HEX }] });
+        showToast("⛓️", `${ARC_NETWORK_LABEL} added to your wallet!`, "success");
       } else {
         throw switchErr;
       }
     }
+    const connectedChain = await provider.request({ method: "eth_chainId" }) as string;
+    if (connectedChain.toLowerCase() !== ARC_CHAIN_ID_HEX.toLowerCase()) throw new Error(`Switch to ${ARC_NETWORK_LABEL} to connect`);
   }, [showToast]);
 
   const connectMetaMask = useCallback(async () => {
@@ -177,9 +180,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (state.kind === "demo" || !activeProviderRef.current) {
       throw new Error("Demo mode is view-only — connect a real wallet (MetaMask) to sign transactions.");
     }
+    await ensureArcNetwork(activeProviderRef.current);
     const browserProvider = new ethers.BrowserProvider(activeProviderRef.current);
-    return browserProvider.getSigner();
-  }, [state.kind]);
+    if ((await browserProvider.getNetwork()).chainId !== BigInt(ARC_CHAIN_ID_DECIMAL)) throw new Error(`Switch to ${ARC_NETWORK_LABEL} before sending`);
+    const signer = await browserProvider.getSigner();
+    if ((await signer.getAddress()).toLowerCase() !== state.address?.toLowerCase()) throw new Error("Your wallet account changed. Reconnect before sending.");
+    setState((s) => ({ ...s, chainOk: true }));
+    return signer;
+  }, [state.kind, state.address, ensureArcNetwork]);
 
   const authCacheRef = useRef<AuthPayload | null>(null);
   // Holds the in-flight signing promise so concurrent callers (e.g. several
@@ -225,17 +233,19 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [state.address, state.kind]);
 
   useEffect(() => {
-    const provider = typeof window !== "undefined" ? window.ethereum : undefined;
+    const provider = activeProviderRef.current;
     if (!provider) return;
     const onAccountsChanged = (...args: unknown[]) => {
       const accs = args[0] as string[];
       if (!accs?.length) disconnect();
-      else onConnected(accs[0], "metamask", provider);
+      else setState((s) => ({ ...s, address: accs[0], balanceWei: null }));
     };
     const onChainChanged = (...args: unknown[]) => {
       const chainId = args[0] as string;
-      if (chainId.toLowerCase() !== ARC_TESTNET_CHAIN_ID_HEX.toLowerCase()) {
-        showToast("⚠️", "Please switch back to Arc Testnet in your wallet.", "error");
+      const chainOk = chainId.toLowerCase() === ARC_CHAIN_ID_HEX.toLowerCase();
+      setState((s) => ({ ...s, chainOk }));
+      if (!chainOk) {
+        showToast("⚠️", `Please switch back to ${ARC_NETWORK_LABEL} in your wallet.`, "error");
       }
     };
     provider.on("accountsChanged", onAccountsChanged);
@@ -244,8 +254,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       provider.removeListener?.("accountsChanged", onAccountsChanged);
       provider.removeListener?.("chainChanged", onChainChanged);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [state.kind, disconnect, showToast]);
 
   return (
     <WalletContext.Provider

@@ -1,5 +1,7 @@
 "use client";
 
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/lib/web3/WalletProvider";
@@ -60,8 +62,8 @@ export function Sidebar({
       </div>
 
       <div className="arc-badge" style={{ marginTop: 12 }}>
-        <div className="arc-badge-text">ARC TESTNET</div>
-        <div className="testnet-dot" />
+        <div className="arc-badge-text">{ARC_NETWORK_LABEL.toUpperCase()}</div>
+        <div className="network-dot" />
       </div>
 
       {NAV_SECTIONS.map((section) => (
@@ -89,7 +91,7 @@ export function Sidebar({
               <div className="wallet-pill">
                 <div className="wallet-label">{kind?.toUpperCase()} CONNECTED</div>
                 <div className="wallet-addr">{shortAddr(address)}</div>
-                <div className="wallet-net">Arc Testnet · {balanceWei !== null ? formatUsdc(balanceWei) : "…"} USDC · tap to manage</div>
+                <div className="wallet-net">{ARC_NETWORK_LABEL} · {balanceWei !== null ? formatUsdc(balanceWei) : "…"} USDC · tap to manage</div>
               </div>
             }
           />

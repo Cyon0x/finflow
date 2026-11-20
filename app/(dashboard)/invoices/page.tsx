@@ -1,5 +1,7 @@
 "use client";
 
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+
 import { useMemo, useState } from "react";
 import { useInvoices } from "@/lib/hooks/useInvoices";
 import { useModal } from "@/lib/modals";
@@ -55,7 +57,7 @@ export default function InvoicesPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <h2 className="section-heading">Invoices</h2>
-          <div className="section-sub">Create, send and track USDC invoices on Arc Testnet</div>
+          <div className="section-sub">Create, send and track USDC invoices on {ARC_NETWORK_LABEL}</div>
         </div>
         <button className="btn btn-primary" onClick={() => open("create-invoice")}>+ New Invoice</button>
       </div>

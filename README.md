@@ -1,69 +1,93 @@
 # FinFlow
 
-Stablecoin payments, invoicing, and treasury infrastructure for Arc Testnet — USDC in, USDC out, non-custodial the whole way.
+Stablecoin payments, invoicing, escrow, and payroll on **Arc Mainnet**. Arc uses native USDC for both payments and gas, with **18 decimals**. FinFlow is non-custodial: connected wallets sign their own transactions.
 
-## What's actually real here
+## Mainnet deployment
 
-Everything below executes a real transaction on Arc Testnet or reads real on-chain state. Nothing in the UI is decorative sample data.
+Network settings are verified against [Circle’s Arc documentation](https://docs.arc.io/arc/references/connect-to-arc) and the live RPC:
 
-- **Wallet connection** — MetaMask (and Coinbase Wallet, if injected), with automatic Arc Testnet add/switch. A "Demo Mode" exists for browsing the UI without a wallet; it's clearly labeled and can't sign transactions.
-- **Invoices & payments** — [`FinFlowTreasury`](https://testnet.arcscan.app/address/0x41BF49FD0606e525b73866BF54e063De5556F4bF) (deployed before this rebuild, verified source in `contracts/reference/`). `createInvoice` / `payInvoice` are called directly from the connected wallet.
-- **Escrow** — [`FinFlowEscrow`](https://testnet.arcscan.app/address/0x337bC1C478172A799aBe2134a98aBBAcA3418FF2), deployed and verified by this repo. Depositor locks funds, releases to the contractor when satisfied, or reclaims after the deadline if never released.
-- **Batch payouts** — [`FinFlowBatchPayout`](https://testnet.arcscan.app/address/0x823B02D1857B191FcA211d9679C8377D8Abe3B09), deployed and verified by this repo. Sends USDC to up to 200 recipients in one transaction.
-- **Payment links** — real, shareable `/pay/[slug]` URLs backed by an on-chain invoice (fixed amount) or a direct-transfer "open amount" link. Creating one shows a branded, gradient-rounded-module QR code (via `qr-code-styling`, high error correction, FinFlow mark embedded in the center) with PNG/SVG/PDF export and one-tap WhatsApp/Telegram/Email/X sharing.
-- **PDF invoices/receipts** — generated client-side, includes the real tx hash and contract address.
-- **Live FX rates** — NGN/KES/GHS/ZAR via a free public API (USDC ≈ USD peg).
-- **API keys & webhooks** — real key generation (SHA-256 hashed, shown once), and two key-gated public endpoints under `/api/v1/*` (see [API & Dev](#api--dev) below).
+- Chain ID: **5042** (`0x13b2`)
+- RPC: `https://rpc.mainnet.arc.io`
+- Explorer: `https://explorer.arc.io`
+- Deployer and contract admin: `0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d`
 
-## What's honestly not real (yet)
+| Contract | Mainnet address | Behavior |
+| --- | --- | --- |
+| FinFlowTreasury | [0x41BF49FD0606e525b73866BF54e063De5556F4bF](https://explorer.arc.io/address/0x41BF49FD0606e525b73866BF54e063De5556F4bF) | Invoice creation, direct merchant settlement, and overpayment refunds |
+| FinFlowEscrow | [0x337bC1C478172A799aBe2134a98aBBAcA3418FF2](https://explorer.arc.io/address/0x337bC1C478172A799aBe2134a98aBBAcA3418FF2) | Depositor-controlled release and refunds after expiry |
+| FinFlowBatchPayout | [0x823B02D1857B191FcA211d9679C8377D8Abe3B09](https://explorer.arc.io/address/0x823B02D1857B191FcA211d9679C8377D8Abe3B09) | Up to 200 recipients in one transaction |
 
-- **Off-ramp (USDC → bank account)** is a waitlist, not a working withdrawal. Real fiat off-ramp needs a licensed money-transmission partner (Kotani Pay, Yellow Card, Bitnob, etc.) and KYC — that's a business integration, not something to fake in a demo.
-- **Team roles** gate the FinFlow UI, not the smart contracts. `FinFlowTreasury` and `FinFlowEscrow` are owned by a single wallet; team "roles" here are an app-level allowlist, not on-chain access control.
-- **Recurring payment links** aren't implemented — the deployed contracts have no subscription logic, so this was deliberately left out rather than faked with a link that doesn't actually recur.
-- **Subscription billing (Pro/Business plans)** is unenforced — the pricing cards describe the roadmap, not a working paywall.
+[deployments/arc-mainnet.json](deployments/arc-mainnet.json) records transaction hashes, deployment blocks, gas costs, constructor arguments, and exact source verification through Sourcify. The mainnet addresses match the historical testnet addresses because the same wallet used the same deployment nonces. The chain ID and mainnet receipts distinguish the deployments.
 
-## Why native 18-decimal amounts everywhere
+## Features
 
-Arc's native gas token *is* USDC (18 decimals) — there's also a 6-decimal ERC-20 "view" of the same funds at `0x3600…0000`, but this app never touches it. `FinFlowTreasury` already committed to `payable`/`msg.value` (native) for invoices, so `FinFlowEscrow` and `FinFlowBatchPayout` follow the same convention for consistency — no `approve()` step anywhere in the app. See `lib/web3/chain.ts` and `lib/web3/format.ts` for the conversion helpers, and don't mix these with 6-decimal math.
+- MetaMask and injected Coinbase Wallet connections automatically add/switch to Arc Mainnet. Transactions recheck the connected account and chain and apply Arc’s 20 Gwei minimum gas fee cap.
+- Invoices and fixed payment links settle directly from the payer to the merchant. Treasury takes no invoice fee. Open amount links transfer directly to the link creator’s wallet.
+- Branded payment QR codes support PNG, SVG, and PDF export, plus WhatsApp, Telegram, Email, and X sharing.
+- Escrow charges a default 1% release fee; batch payouts add a default 1% fee to the recipients’ total. Both fee collectors are the deployer wallet. Admin fee settings are capped at 3%.
+- Dashboard, payment and payout history, analytics, team wallets, business display names, PDFs, and live NGN/KES/GHS/ZAR exchange rates.
+- Wallet-authenticated APIs, live API keys, payment-link and unsigned payout developer endpoints, and daily reconciliation/webhooks.
+- A labeled demo mode supports viewing the interface without signing transactions.
 
-## Stack
+## Testnet history and mainnet data
 
-Next.js 14 (App Router) + TypeScript, Prisma/Postgres, ethers v6, Hardhat + OpenZeppelin for contracts, vanilla CSS design system (no Tailwind).
+The database migration assigns existing invoices, payment links, escrows, payouts, and API keys to Arc Testnet (`5042002`). New records explicitly use mainnet (`5042`); invoice and escrow IDs are unique within each chain. Old testnet payment links cannot initiate mainnet payments, and reconciliation reads only the active network.
 
-## Local setup
+Mainnet API keys are newly generated in **API & Dev → Live Key**. Historical testnet keys cannot authorize mainnet operations. Wallet authentication messages also include the chain ID. Invoice, escrow, and payout recording checks confirmed transactions against the active contracts.
+
+Testnet balances and contract state remain on testnet. Mainnet invoices and escrows are new records backed by real mainnet USDC. The historical deployment manifest is [deployments/arc-testnet.json](deployments/arc-testnet.json).
+
+## Stack and setup
+
+Next.js 14 App Router, React, TypeScript, Prisma/Postgres, ethers v6, Hardhat/OpenZeppelin, and vanilla CSS.
 
 ```bash
 npm install
-cp .env.example .env       # fill in DATABASE_URL at minimum
-npx prisma migrate deploy  # applies committed migrations — safe, non-interactive
+cp .env.example .env
+# Set DATABASE_URL. Mainnet network and contract settings are already provided.
+npx prisma migrate deploy
 npm run dev
 ```
 
-Changing `prisma/schema.prisma`? Run `npm run db:migrate` (wraps `prisma migrate dev`) to generate a new migration file — commit the generated `prisma/migrations/*` folder. `npm run build` runs `prisma migrate deploy` automatically, so every Vercel deploy applies pending migrations before building — no manual `db push` step needed anymore.
+`npm run build` applies committed migrations, generates the Prisma client, and builds Next.js. Database changes belong in `prisma/migrations/`; use `npm run db:migrate` when making a new schema change.
 
-Contract addresses in `.env.example` are already live on Arc Testnet — you don't need to redeploy to run the app locally. If you do want your own copies:
+For historical testnet debugging, set `NEXT_PUBLIC_ARC_NETWORK=testnet` and `NEXT_PUBLIC_ARC_RPC_URL=https://rpc.testnet.arc.io` before starting/building the app. Mainnet is the default.
+
+## Contract deployment and checks
+
+The contracts are already deployed. The mainnet deployment script uses the same admin wallet and resumes from its recorded transaction hashes so a rerun does not create extra copies.
 
 ```bash
-# DEPLOYER_PRIVATE_KEY in .env — fund it first at https://faucet.circle.com
-npm run contracts:test     # 12 tests, run these before deploying
-npm run contracts:deploy
+npm run contracts:test   # 21 contract behavior tests
+npm run contracts:plan   # Read-only mainnet gas/ownership/bytecode checks
+npm run contracts:deploy # Only broadcasts contracts missing from the manifest
+npm run contracts:verify
+npm run mainnet:check    # Checks mainnet receipts, sender, bytecode, ownership and fees
 ```
 
-## Deploying
+`DEPLOYER_PRIVATE_KEY` is used only by local deployment tools. Keep it in the ignored local environment file; the Next.js app and Vercel runtime do not need it. Gas is paid with real native USDC. The deployment script requires sufficient balance for all remaining contracts and a maximum gas budget of 1 USDC unless explicitly configured with `FINFLOW_MAX_DEPLOYMENT_USDC`.
 
-1. **Database**: create a free Postgres at [neon.tech](https://neon.tech), copy the connection string.
-2. **Vercel**: import this GitHub repo at vercel.com → New Project. Add env vars from `.env.example` (at minimum `DATABASE_URL`; contract addresses already default correctly). Deploy — the build applies migrations automatically.
-3. **Cron**: `vercel.json` schedules a daily reconciliation job (`/api/cron/sync`) — Vercel's Hobby plan caps cron at once/day, which is why this is a backstop, not the primary data path. Invoice/escrow status updates immediately when a payment happens through the app; the cron just catches anything that happened outside it.
+## Developer API
 
-## API & Dev
+Generate a live key in **API & Dev**, then use `Authorization: Bearer ff_live_...`:
 
-Two key-gated endpoints under `/api/v1/`, authenticated via `Authorization: Bearer <key>` (generate a key in Settings → API & Dev):
+- `POST /api/v1/payment-links` creates an open amount payment link and returns its URL and chain ID.
+- `POST /api/v1/payouts/batch` accepts up to 200 `{address, amount}` recipients, where `amount` is USDC. It returns mainnet contract calldata, native 18-decimal `value`, chain ID, current fee quote, and EIP-1559 gas settings. The caller signs and sends the transaction.
+- `GET /api/network` exposes the active chain and public deployment configuration.
 
-- `POST /api/v1/payment-links` — creates an open-amount payment link. Scoped to open-amount only: a fixed-amount link needs an on-chain `createInvoice()` call signed by the merchant's own wallet, which a server-side API key can't do on a non-custodial platform.
-- `POST /api/v1/payouts/batch` — returns unsigned transaction data (`to`, `data`, `value`) for a batch payout. You sign and send it yourself — FinFlow never holds a private key on your behalf.
+For an integration check against a local mainnet-configured server:
 
-## Known follow-ups
+```bash
+npm start -- -p 3142
+node scripts/network-integration-test.js http://localhost:3142
+```
 
-- Next.js is pinned to 14.2.35 (latest patched 14.x). A move to Next 15/16 is worth doing later but wasn't done here to avoid an untested major-version jump mid-build.
-- Rate limiting (`lib/rateLimit.ts`) is in-memory and per-instance — a reasonable deterrent against naive spam, but not a distributed guarantee across Vercel's serverless instances. For hard protection, enable Vercel's Firewall / Attack Challenge Mode in the dashboard (no code required).
-- Wallet-signature auth for reads (not just writes) means every data-fetching hook needs a signature — mitigated by an in-flight-request dedupe plus a 4-minute client-side cache (`lib/web3/WalletProvider.tsx`), so in practice it's one signature per ~4 minutes of browsing, not one per request.
+The check tests network isolation, live key issuance, native USDC payout encoding, confirmed-transaction validation, and payment-link creation. Its database fixtures are rolled back or removed; it sends no financial transactions.
+
+## Production deployment
+
+Import/link this repository in Vercel, provide `DATABASE_URL` and `CRON_SECRET`, and build. Network settings and contract addresses default to the confirmed mainnet manifest. All public pages, wallet connections, server reads, payout APIs, PDF captions, and explorer links share the selected network configuration.
+
+## Features awaiting integration
+
+Bank off-ramp is a waitlist pending a provider integration. Recurring billing and paid subscription enforcement are not implemented. Team roles govern application permissions; smart-contract ownership remains with the admin wallet. Rate limiting is currently per-instance.

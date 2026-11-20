@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerReadProvider, getInvoiceOnChain } from "@/lib/web3/activity";
+import { ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 
 // Re-reads the real on-chain invoice state and reconciles the DB row.
 // Deliberately takes no client-asserted "it's paid" claim — the payer (who
 // may not be the invoice owner) has no write access to this row, so the
 // only way to mark PAID is to verify it directly against the contract.
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const invoice = await prisma.invoice.findUnique({ where: { id: params.id } });
+  const invoice = await prisma.invoice.findFirst({ where: { id: params.id, chainId: ARC_CHAIN_ID_DECIMAL } });
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!invoice.chainInvoiceId) return NextResponse.json({ error: "Invoice has no on-chain id yet" }, { status: 400 });
 

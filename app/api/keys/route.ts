@@ -3,13 +3,14 @@ import { randomBytes, createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { extractAuthFromQuery, verifyAuthBody } from "@/lib/apiAuth";
 import { rateLimit } from "@/lib/rateLimit";
+import { ARC_API_KEY_ENV, ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 
 export async function GET(req: NextRequest) {
   const owner = extractAuthFromQuery(req);
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const keys = await prisma.apiKey.findMany({
-    where: { ownerAddress: owner, revokedAt: null },
+    where: { ownerAddress: owner, revokedAt: null, chainId: ARC_CHAIN_ID_DECIMAL, env: ARC_API_KEY_ENV },
     orderBy: { createdAt: "desc" },
     select: { id: true, label: true, env: true, keyPrefix: true, lastUsedAt: true, createdAt: true },
   });
@@ -24,7 +25,8 @@ export async function POST(req: NextRequest) {
   const owner = verifyAuthBody(body.auth);
   if (!owner) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const env: "LIVE" | "TEST" = body.env === "LIVE" ? "LIVE" : "TEST";
+  if (body.env && body.env !== ARC_API_KEY_ENV) return NextResponse.json({ error: "Choose an API key for the current network" }, { status: 400 });
+  const env = ARC_API_KEY_ENV;
   const label = body.label || (env === "LIVE" ? "Live key" : "Test key");
 
   const secretBody = randomBytes(24).toString("base64url");
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
   const keyHash = createHash("sha256").update(fullKey).digest("hex");
 
   await prisma.apiKey.create({
-    data: { ownerAddress: owner, label, env, keyPrefix: prefix, keyHash },
+    data: { ownerAddress: owner, chainId: ARC_CHAIN_ID_DECIMAL, label, env, keyPrefix: prefix, keyHash },
   });
 
   // Full secret is only ever shown here, once — the DB stores just the hash.

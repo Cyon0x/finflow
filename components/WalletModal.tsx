@@ -2,7 +2,7 @@
 
 import { useEffect, type CSSProperties } from "react";
 import { useWallet } from "@/lib/web3/WalletProvider";
-import { ARC_FAUCET_URL } from "@/lib/web3/chain";
+import { ARC_FUNDING_URL, ARC_NETWORK_LABEL } from "@/lib/web3/chain";
 
 export function WalletModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { connectMetaMask, connectCoinbase, connectDemo, connecting, address } = useWallet();
@@ -18,7 +18,7 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
         <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
           <div style={{ fontSize: "2rem", marginBottom: 8 }}>🔗</div>
           <div className="modal-title">Connect Wallet</div>
-          <div className="modal-sub">Connect to FinFlow on Arc Testnet — Circle's stablecoin-native L1</div>
+          <div className="modal-sub">Connect to FinFlow on {ARC_NETWORK_LABEL} — Circle's stablecoin-native L1</div>
         </div>
 
         {connecting && (
@@ -97,10 +97,10 @@ export function WalletModal({ open, onClose }: { open: boolean; onClose: () => v
             ⛓️
           </div>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>Arc Testnet · Circle&apos;s L1</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{ARC_NETWORK_LABEL} · Circle&apos;s L1</div>
             <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 1 }}>Native USDC gas · Sub-second finality · EVM compatible</div>
           </div>
-          <a href={ARC_FAUCET_URL} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", textDecoration: "none", marginLeft: "auto" }}>
+          <a href={ARC_FUNDING_URL} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", fontFamily: "'JetBrains Mono',monospace", whiteSpace: "nowrap", textDecoration: "none", marginLeft: "auto" }}>
             Get USDC →
           </a>
         </div>

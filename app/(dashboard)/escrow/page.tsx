@@ -8,6 +8,7 @@ import { useWallet } from "@/lib/web3/WalletProvider";
 import { getEscrowContract, ESCROW_ADDRESS } from "@/lib/web3/contracts";
 import { formatUsdc } from "@/lib/web3/format";
 import { explorerTxUrl, explorerAddressUrl } from "@/lib/web3/chain";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 
 export default function EscrowPage() {
   const { escrows, loading, syncEscrow } = useEscrows();
@@ -28,7 +29,7 @@ export default function EscrowPage() {
       const signer = await getSigner();
       const contract = getEscrowContract(signer);
       showToast("✍️", "Confirm the release in your wallet…");
-      const tx = await contract.release(chainEscrowId);
+      const tx = await contract.release(chainEscrowId, await arcTransactionOverrides(signer));
       showToast("⏳", "Waiting for confirmation…");
       await tx.wait();
       await syncEscrow(escrowId);
@@ -47,7 +48,7 @@ export default function EscrowPage() {
       const signer = await getSigner();
       const contract = getEscrowContract(signer);
       showToast("✍️", "Confirm the refund in your wallet…");
-      const tx = await contract.refundExpired(chainEscrowId);
+      const tx = await contract.refundExpired(chainEscrowId, await arcTransactionOverrides(signer));
       await tx.wait();
       await syncEscrow(escrowId);
       refreshBalance();

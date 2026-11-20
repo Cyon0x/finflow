@@ -44,7 +44,8 @@ enum ApiKeyEnv {
 
 model Invoice {
   id              String        @id @default(cuid())
-  chainInvoiceId  Int?          @unique // FinFlowTreasury invoice id, set once the createInvoice tx confirms
+  chainId         Int           @default(5042002) // default preserves pre-mainnet rows; every new write supplies the active chain
+  chainInvoiceId  Int?          // FinFlowTreasury invoice id, set once the createInvoice tx confirms
   ownerAddress    String // merchant wallet (lowercased)
   businessName    String? // merchant-entered display name, shown on the public /pay page
   clientName      String
@@ -61,11 +62,14 @@ model Invoice {
   updatedAt       DateTime      @updatedAt
   paymentLink     PaymentLink?
 
+  @@unique([chainId, chainInvoiceId])
+  @@index([chainId, ownerAddress])
   @@index([ownerAddress])
 }
 
 model PaymentLink {
   id           String          @id @default(cuid())
+  chainId      Int             @default(5042002)
   slug         String          @unique
   ownerAddress String
   businessName String? // used on the public pay page for OPEN links (no backing invoice to read it from)
@@ -79,6 +83,7 @@ model PaymentLink {
   paidCount    Int             @default(0)
   createdAt    DateTime        @default(now())
 
+  @@index([chainId, ownerAddress])
   @@index([ownerAddress])
 }
 
@@ -96,6 +101,7 @@ model TeamMember {
 
 model ApiKey {
   id           String    @id @default(cuid())
+  chainId      Int       @default(5042002)
   ownerAddress String
   label        String
   env          ApiKeyEnv @default(TEST)
@@ -105,6 +111,7 @@ model ApiKey {
   createdAt    DateTime  @default(now())
   revokedAt    DateTime?
 
+  @@index([chainId, ownerAddress])
   @@index([ownerAddress])
 }
 
@@ -130,7 +137,8 @@ model OfframpWaitlistEntry {
 
 model EscrowRecord {
   id             String    @id @default(cuid())
-  chainEscrowId  Int       @unique
+  chainId        Int       @default(5042002)
+  chainEscrowId  Int
   ownerAddress   String // depositor
   contractor     String
   amountNative   String
@@ -141,6 +149,8 @@ model EscrowRecord {
   txHashRelease  String?
   createdAt      DateTime  @default(now())
 
+  @@unique([chainId, chainEscrowId])
+  @@index([chainId, ownerAddress])
   @@index([ownerAddress])
 }
 
@@ -156,6 +166,7 @@ model SyncCursor {
 // so the tx hash is the natural unique key here.
 model BatchPayoutRecord {
   id             String   @id @default(cuid())
+  chainId        Int      @default(5042002)
   ownerAddress   String // sender
   txHash         String   @unique
   recipientCount Int
@@ -163,5 +174,6 @@ model BatchPayoutRecord {
   feeNative      String
   createdAt      DateTime @default(now())
 
+  @@index([chainId, ownerAddress])
   @@index([ownerAddress])
 }

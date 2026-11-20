@@ -1,0 +1,61 @@
+{
+  "network": "arcMainnet",
+  "chainId": 5042,
+  "deployer": "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d",
+  "contracts": {
+    "FinFlowTreasury": {
+      "address": "0x41BF49FD0606e525b73866BF54e063De5556F4bF",
+      "transactionHash": "0xb0a06ceb2cabf151fb292ae528398420e3f8fd465de027be2470fc1013e1831e",
+      "blockNumber": 32285926,
+      "constructorArguments": [
+        "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d"
+      ],
+      "gasUsed": "1161425",
+      "gasCostUsdc": "0.024389925",
+      "sourceVerification": {
+        "provider": "sourcify",
+        "url": "https://sourcify.dev/server/v2/contract/5042/0x41BF49FD0606e525b73866BF54e063De5556F4bF",
+        "status": "verified",
+        "runtimeMatch": "exact_match",
+        "creationMatch": "exact_match"
+      }
+    },
+    "FinFlowEscrow": {
+      "address": "0x337bC1C478172A799aBe2134a98aBBAcA3418FF2",
+      "transactionHash": "0x83c2e1a8fc29832a2e10b6adcff4e316dad51c96fa77a6de78bf2c5440792fc2",
+      "blockNumber": 32285931,
+      "constructorArguments": [
+        "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d",
+        "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d"
+      ],
+      "gasUsed": "1245275",
+      "gasCostUsdc": "0.026150775",
+      "sourceVerification": {
+        "provider": "sourcify",
+        "url": "https://sourcify.dev/server/v2/contract/5042/0x337bC1C478172A799aBe2134a98aBBAcA3418FF2",
+        "status": "verified",
+        "runtimeMatch": "exact_match",
+        "creationMatch": "exact_match"
+      }
+    },
+    "FinFlowBatchPayout": {
+      "address": "0x823B02D1857B191FcA211d9679C8377D8Abe3B09",
+      "transactionHash": "0x00a9e10a1f6a8b4b0852a8689dbefb9f744d95b16bd763b26b5664d5f032304c",
+      "blockNumber": 32285937,
+      "constructorArguments": [
+        "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d",
+        "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d"
+      ],
+      "gasUsed": "765361",
+      "gasCostUsdc": "0.016072581",
+      "sourceVerification": {
+        "provider": "sourcify",
+        "url": "https://sourcify.dev/server/v2/contract/5042/0x823B02D1857B191FcA211d9679C8377D8Abe3B09",
+        "status": "verified",
+        "runtimeMatch": "exact_match",
+        "creationMatch": "exact_match"
+      }
+    }
+  },
+  "deployedAt": "2026-11-20T21:23:01.327Z"
+}

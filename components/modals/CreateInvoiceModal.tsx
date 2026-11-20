@@ -1,5 +1,7 @@
 "use client";
 
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+
 import { useState } from "react";
 import { useModal } from "@/lib/modals";
 import { useWallet } from "@/lib/web3/WalletProvider";
@@ -7,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useInvoices } from "@/lib/hooks/useInvoices";
 import { usePaymentLinks } from "@/lib/hooks/usePaymentLinks";
 import { getTreasuryContract } from "@/lib/web3/contracts";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 import { usdcToWei, formatUsdc } from "@/lib/web3/format";
 import { getSavedBusinessName, saveBusinessName } from "@/lib/businessProfile";
 import { PaymentLinkShare } from "@/components/PaymentLinkShare";
@@ -60,8 +63,8 @@ export function CreateInvoiceModal() {
       const amountWei = usdcToWei(form.amount);
 
       showToast("✍️", "Confirm the transaction in your wallet…");
-      const tx = await treasury.createInvoice(amountWei, memo);
-      showToast("⏳", "Waiting for confirmation on Arc Testnet…");
+      const tx = await treasury.createInvoice(amountWei, memo, await arcTransactionOverrides(signer));
+      showToast("⏳", `Waiting for confirmation on ${ARC_NETWORK_LABEL}…`);
       const receipt = await tx.wait();
 
       let chainInvoiceId: number | null = null;

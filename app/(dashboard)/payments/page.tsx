@@ -7,7 +7,7 @@ import { useModal } from "@/lib/modals";
 import { useToast } from "@/components/Toast";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatUsdc } from "@/lib/web3/format";
-import { explorerTxUrl } from "@/lib/web3/chain";
+import { explorerTxUrl, ARC_NETWORK_LABEL } from "@/lib/web3/chain";
 
 export default function PaymentsPage() {
   const { links, loading: linksLoading } = usePaymentLinks();
@@ -76,7 +76,7 @@ export default function PaymentsPage() {
           <div className="card-body" style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.7 }}>
             <p>Every <strong>One-time</strong> payment link is backed by a real invoice on FinFlowTreasury — the payer&apos;s wallet calls <code>payInvoice()</code> directly, funds land in your wallet in the same transaction, with automatic overpayment refunds.</p>
             <p style={{ marginTop: 10 }}><strong>Open Amount</strong> links let the payer send any amount straight to the treasury contract — good for tips or flexible payments.</p>
-            <p style={{ marginTop: 10, color: "var(--ink3)" }}>FinFlow never custodies funds — everything settles peer-to-peer on Arc Testnet.</p>
+            <p style={{ marginTop: 10, color: "var(--ink3)" }}>FinFlow never custodies funds — everything settles peer-to-peer on {ARC_NETWORK_LABEL}.</p>
           </div>
         </div>
       </div>

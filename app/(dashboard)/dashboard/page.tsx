@@ -8,7 +8,7 @@ import { useInvoices } from "@/lib/hooks/useInvoices";
 import { useEscrows } from "@/lib/hooks/useEscrows";
 import { useFxRates } from "@/lib/hooks/useFxRates";
 import { formatUsdc } from "@/lib/web3/format";
-import { explorerTxUrl } from "@/lib/web3/chain";
+import { explorerTxUrl, ARC_NETWORK_LABEL } from "@/lib/web3/chain";
 import { StatusBadge } from "@/components/StatusBadge";
 
 const FREE_TIER_LIMIT = 50;
@@ -57,7 +57,7 @@ export default function DashboardPage() {
         </div>
         <div style={{ textAlign: "right" }}>
           <div className="rate-label">NETWORK</div>
-          <div className="rate-value">Arc Testnet</div>
+          <div className="rate-value">{ARC_NETWORK_LABEL}</div>
         </div>
       </div>
 

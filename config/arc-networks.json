@@ -1,0 +1,18 @@
+{
+  "mainnet": {
+    "hardhatNetwork": "arcMainnet",
+    "chainId": 5042,
+    "chainName": "Arc Mainnet",
+    "rpcUrl": "https://rpc.mainnet.arc.io",
+    "explorerUrl": "https://explorer.arc.io",
+    "fundingUrl": "https://docs.arc.io/arc-chain#get-usdc"
+  },
+  "testnet": {
+    "hardhatNetwork": "arcTestnet",
+    "chainId": 5042002,
+    "chainName": "Arc Testnet",
+    "rpcUrl": "https://rpc.testnet.arc.io",
+    "explorerUrl": "https://explorer.testnet.arc.io",
+    "fundingUrl": "https://faucet.circle.com"
+  }
+}

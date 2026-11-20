@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Reference copy only — NOT deployed by this repo.
+// Original source verified from the existing testnet deployment.
 //
 // This is the exact verified source of the FinFlowTreasury contract already
 // live on Arc Testnet at 0x41BF49FD0606e525b73866BF54e063De5556F4bF
@@ -11,7 +11,7 @@ pragma solidity ^0.8.20;
 // frontend to import from — see lib/web3/treasury.ts — instead of a
 // hand-transcribed ABI that could silently drift from the real contract.
 //
-// Do not modify and do not add a deploy step for this file.
+// scripts/deploy.js deploys this contract unchanged to Arc Mainnet.
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";

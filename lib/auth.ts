@@ -1,4 +1,5 @@
 import { ethers } from "ethers";
+import { ARC_CHAIN_ID_DECIMAL } from "./web3/chain";
 
 // FinFlow has no email/password login — every wallet IS the account. Writes
 // that mutate an ownerAddress's data (creating a payment link, inviting a
@@ -10,7 +11,7 @@ import { ethers } from "ethers";
 const FRESHNESS_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 export function buildAuthMessage(address: string, timestamp: number) {
-  return `FinFlow API request\naddress:${address.toLowerCase()}\ntimestamp:${timestamp}`;
+  return `FinFlow API request\nchainId:${ARC_CHAIN_ID_DECIMAL}\naddress:${address.toLowerCase()}\ntimestamp:${timestamp}`;
 }
 
 export type AuthPayload = {

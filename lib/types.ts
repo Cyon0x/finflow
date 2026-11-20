@@ -6,6 +6,7 @@ export type InvoiceStatus = "PENDING" | "PAID" | "OVERDUE" | "CANCELLED";
 
 export type ClientInvoice = {
   id: string;
+  chainId: number;
   chainInvoiceId: number | null;
   ownerAddress: string;
   businessName: string | null;
@@ -28,6 +29,7 @@ export type PaymentLinkType = "ONE_TIME" | "RECURRING" | "OPEN";
 
 export type ClientPaymentLink = {
   id: string;
+  chainId: number;
   slug: string;
   ownerAddress: string;
   businessName: string | null;
@@ -82,6 +84,7 @@ export type ClientWebhook = {
 
 export type ClientEscrowRecord = {
   id: string;
+  chainId: number;
   chainEscrowId: number;
   ownerAddress: string;
   contractor: string;
@@ -96,6 +99,7 @@ export type ClientEscrowRecord = {
 
 export type ClientBatchPayoutRecord = {
   id: string;
+  chainId: number;
   ownerAddress: string;
   txHash: string;
   recipientCount: number;

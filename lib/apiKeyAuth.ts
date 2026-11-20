@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { prisma } from "./prisma";
+import { ARC_API_KEY_ENV, ARC_CHAIN_ID_DECIMAL } from "./web3/chain";
 
 /** Validates `Authorization: Bearer ff_live_...` / `ff_test_...` against stored key hashes. Returns the owning wallet address, or null. */
 export async function authenticateApiKey(req: NextRequest): Promise<string | null> {
@@ -10,7 +11,7 @@ export async function authenticateApiKey(req: NextRequest): Promise<string | nul
   if (!key) return null;
 
   const keyHash = createHash("sha256").update(key).digest("hex");
-  const record = await prisma.apiKey.findFirst({ where: { keyHash, revokedAt: null } });
+  const record = await prisma.apiKey.findFirst({ where: { keyHash, revokedAt: null, chainId: ARC_CHAIN_ID_DECIMAL, env: ARC_API_KEY_ENV } });
   if (!record) return null;
 
   await prisma.apiKey.update({ where: { id: record.id }, data: { lastUsedAt: new Date() } });

@@ -3,8 +3,9 @@ import { ethers } from "ethers";
 import { authenticateApiKey } from "@/lib/apiKeyAuth";
 import { getBatchPayoutContract, BATCH_PAYOUT_ADDRESS } from "@/lib/web3/contracts";
 import { getServerReadProvider } from "@/lib/web3/activity";
-import { ARC_TESTNET_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
+import { ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 import { rateLimit } from "@/lib/rateLimit";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 
 // Public developer API — builds (but does not sign or send) a batch payout
 // transaction. FinFlow is non-custodial: this backend has no private key to
@@ -30,17 +31,23 @@ export async function POST(req: NextRequest) {
     const amounts = recipients.map((r: { amount: string | number }) => ethers.parseUnits(String(r.amount), 18));
     for (const a of addresses) {
       if (!/^0x[a-fA-F0-9]{40}$/.test(a)) throw new Error(`Invalid address: ${a}`);
+      if (a.toLowerCase() === ethers.ZeroAddress) throw new Error("Recipient cannot be the zero address");
     }
+    if (amounts.some((amount: bigint) => amount <= 0n)) throw new Error("Each payout amount must be greater than zero");
 
-    const contract = getBatchPayoutContract(getServerReadProvider());
+    const provider = getServerReadProvider();
+    const contract = getBatchPayoutContract(provider);
     const [total, fee, valueToSend] = await contract.quote(amounts);
     const data = contract.interface.encodeFunctionData("disperseNative", [addresses, amounts]);
+    const gas = await arcTransactionOverrides(provider);
 
     return NextResponse.json({
       to: BATCH_PAYOUT_ADDRESS,
       data,
       value: valueToSend.toString(),
-      chainId: ARC_TESTNET_CHAIN_ID_DECIMAL,
+      chainId: ARC_CHAIN_ID_DECIMAL,
+      maxFeePerGas: gas.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: gas.maxPriorityFeePerGas.toString(),
       quote: { totalToRecipients: total.toString(), fee: fee.toString(), valueToSend: valueToSend.toString() },
       note: "Sign and send this transaction yourself — FinFlow never holds your private key.",
     });

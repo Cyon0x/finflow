@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 // for 5 minutes at the edge/CDN layer since this updates roughly daily
 // upstream anyway.
 const CURRENCIES = ["NGN", "KES", "GHS", "ZAR"] as const;
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -15,7 +16,7 @@ export async function GET() {
     const rates: Record<string, number> = {};
     for (const c of CURRENCIES) rates[c] = data.rates[c];
 
-    return NextResponse.json({ rates, updatedAt: data.time_last_update_utc, source: "open.er-api.com" });
+    return NextResponse.json({ rates, updatedAt: data.time_last_update_utc, source: "open.er-api.com" }, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });
   }

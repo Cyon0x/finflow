@@ -6,7 +6,8 @@ import { useWallet } from "@/lib/web3/WalletProvider";
 import { useToast } from "@/components/Toast";
 import { useInvoices } from "@/lib/hooks/useInvoices";
 import { getEscrowContract, getBatchPayoutContract, ESCROW_ADDRESS, BATCH_PAYOUT_ADDRESS } from "@/lib/web3/contracts";
-import { ARC_TESTNET } from "@/lib/web3/chain";
+import { ARC_NETWORK } from "@/lib/web3/chain";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 import { getSavedBusinessName, saveBusinessName } from "@/lib/businessProfile";
 
 const FREE_TIER_LIMIT = 50;
@@ -35,7 +36,7 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    const provider = new ethers.JsonRpcProvider(ARC_TESTNET.rpcUrls[0]);
+    const provider = new ethers.JsonRpcProvider(ARC_NETWORK.rpcUrls[0]);
     if (ESCROW_ADDRESS) {
       const c = getEscrowContract(provider);
       c.feeBps().then((v: bigint) => setEscrowFeeBps(Number(v))).catch(() => {});
@@ -53,7 +54,7 @@ export default function SettingsPage() {
     try {
       const signer = await getSigner();
       const contract = contractType === "escrow" ? getEscrowContract(signer) : getBatchPayoutContract(signer);
-      const tx = await contract.setFeeBps(bpsValue);
+      const tx = await contract.setFeeBps(bpsValue, await arcTransactionOverrides(signer));
       showToast("⏳", "Confirming fee update on-chain…");
       await tx.wait();
       refreshBalance();

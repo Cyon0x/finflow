@@ -1,5 +1,7 @@
 "use client";
 
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+
 import { useRef, useState } from "react";
 import { BrandedQRCode, type BrandedQRCodeHandle } from "./BrandedQRCode";
 
@@ -54,7 +56,7 @@ export function PaymentLinkShare({
     doc.setTextColor(90, 100, 120);
     const urlLines = doc.splitTextToSize(url, 316);
     doc.text(urlLines, 190, 460, { align: "center" });
-    doc.text("Non-custodial — powered by FinFlow on Arc Testnet", 190, 495, { align: "center" });
+    doc.text(`Non-custodial — powered by FinFlow on ${ARC_NETWORK_LABEL}`, 190, 495, { align: "center" });
 
     doc.save("finflow-payment-qr.pdf");
   }

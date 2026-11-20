@@ -7,7 +7,8 @@ import { useToast } from "@/components/Toast";
 import { useBatchPayouts } from "@/lib/hooks/useBatchPayouts";
 import { getBatchPayoutContract, BATCH_PAYOUT_ADDRESS } from "@/lib/web3/contracts";
 import { usdcToWei, formatUsdc } from "@/lib/web3/format";
-import { explorerTxUrl, ARC_TESTNET } from "@/lib/web3/chain";
+import { explorerTxUrl, ARC_NETWORK, ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 
 type Row = { address: string; amount: string };
 
@@ -22,7 +23,7 @@ export default function PayoutsPage() {
 
   useEffect(() => {
     if (!BATCH_PAYOUT_ADDRESS) return;
-    const provider = new ethers.JsonRpcProvider(ARC_TESTNET.rpcUrls[0]);
+    const provider = new ethers.JsonRpcProvider(ARC_NETWORK.rpcUrls[0]);
     getBatchPayoutContract(provider)
       .feeBps()
       .then((bps: bigint) => setFeeBps(Number(bps)))
@@ -55,10 +56,11 @@ export default function PayoutsPage() {
 
   async function handleSubmit() {
     if (!address) return showToast("🔗", "Connect a wallet first.", "error");
-    if (!BATCH_PAYOUT_ADDRESS) return showToast("🚧", "BatchPayout contract isn't deployed yet — run `npm run contracts:deploy`.", "error");
+    if (!BATCH_PAYOUT_ADDRESS) return showToast("🚧", "Payouts are temporarily unavailable.", "error");
 
     const validRows = rows.filter((r) => r.address && r.amount);
     if (validRows.length === 0) return showToast("❌", "Add at least one recipient.", "error");
+    if (validRows.length > 200) return showToast("❌", "Use at most 200 recipients per batch.", "error");
     for (const r of validRows) {
       if (!/^0x[a-fA-F0-9]{40}$/.test(r.address)) return showToast("❌", `Invalid address: ${r.address}`, "error");
     }
@@ -69,18 +71,20 @@ export default function PayoutsPage() {
       const contract = getBatchPayoutContract(signer);
       const recipients = validRows.map((r) => r.address);
       const amounts = validRows.map((r) => usdcToWei(r.amount));
+      if (amounts.some((amount) => amount <= 0n)) throw new Error("Each payout amount must be greater than zero");
+      const [total, fee, valueToSend] = await contract.quote(amounts);
 
       showToast("✍️", "Confirm the transaction in your wallet…");
-      const tx = await contract.disperseNative(recipients, amounts, { value: totals.total });
-      showToast("⏳", "Waiting for confirmation on Arc Testnet…");
+      const tx = await contract.disperseNative(recipients, amounts, { ...await arcTransactionOverrides(signer), value: valueToSend });
+      showToast("⏳", `Waiting for confirmation on ${ARC_NETWORK_LABEL}…`);
       await tx.wait();
 
       setLastTx(tx.hash);
       await recordPayout({
         txHash: tx.hash,
         recipientCount: validRows.length,
-        totalNative: totals.subtotal.toString(),
-        feeNative: totals.fee.toString(),
+        totalNative: total.toString(),
+        feeNative: fee.toString(),
       }).catch(() => {
         // History recording failing shouldn't hide that the payout itself
         // succeeded — the tx already confirmed on-chain either way.
@@ -88,7 +92,7 @@ export default function PayoutsPage() {
       });
       refreshBalance();
 
-      showToast("🚀", `Batch payout of ${formatUsdc(totals.subtotal)} USDC sent to ${validRows.length} wallets!`, "success");
+      showToast("🚀", `Batch payout of ${formatUsdc(total)} USDC sent to ${validRows.length} wallets!`, "success");
       setRows([{ address: "", amount: "" }]);
     } catch (err) {
       showToast("❌", (err as Error).message || "Batch payout failed", "error");
@@ -109,7 +113,7 @@ export default function PayoutsPage() {
 
             {!BATCH_PAYOUT_ADDRESS && (
               <div style={{ background: "var(--amber-light)", border: "1px solid var(--amber)", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12, color: "var(--amber)" }}>
-                BatchPayout contract not deployed yet. Run <code>npm run contracts:deploy</code> and set NEXT_PUBLIC_BATCHPAYOUT_ADDRESS.
+                Payouts are temporarily unavailable. Please try again later.
               </div>
             )}
 
@@ -127,7 +131,7 @@ export default function PayoutsPage() {
             <div className="divider" />
             <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Subtotal</span><span className="mono">{formatUsdc(totals.subtotal)} USDC</span></div>
             <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Platform Fee ({(feeBps / 100).toFixed(2)}%)</span><span className="mono" style={{ color: "var(--red)" }}>-{formatUsdc(totals.fee)} USDC</span></div>
-            <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Network Fee</span><span className="mono" style={{ color: "var(--ink3)" }}>~$0.001</span></div>
+            <div className="fee-row"><span style={{ color: "var(--ink3)" }}>Network Fee</span><span className="mono" style={{ color: "var(--ink3)" }}>Shown in your wallet</span></div>
             <div className="fee-row"><span>Total Deducted</span><span className="mono">{formatUsdc(totals.total)} USDC</span></div>
 
             <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center", marginTop: 16 }} onClick={handleSubmit} disabled={submitting || totals.validRows === 0}>

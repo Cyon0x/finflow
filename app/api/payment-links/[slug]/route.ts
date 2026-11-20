@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 
 // Public, unauthenticated — anyone with the link needs to be able to load
 // what they're paying for.
@@ -8,7 +9,7 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
     where: { slug: params.slug },
     include: { invoice: true },
   });
-  if (!link || !link.active) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!link || !link.active || link.chainId !== ARC_CHAIN_ID_DECIMAL || (link.invoice && link.invoice.chainId !== ARC_CHAIN_ID_DECIMAL)) return NextResponse.json({ error: "This payment link is unavailable on this network" }, { status: 404 });
   return NextResponse.json({ link });
 }
 
@@ -16,8 +17,10 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
 // paid counter for display purposes. Chain state remains the source of
 // truth for whether the underlying invoice is actually paid.
 export async function POST(_req: NextRequest, { params }: { params: { slug: string } }) {
+  const existing = await prisma.paymentLink.findUnique({ where: { slug: params.slug } });
+  if (!existing || !existing.active || existing.chainId !== ARC_CHAIN_ID_DECIMAL) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const link = await prisma.paymentLink.update({
-    where: { slug: params.slug },
+    where: { slug: params.slug, chainId: ARC_CHAIN_ID_DECIMAL },
     data: { paidCount: { increment: 1 } },
   });
   return NextResponse.json({ link });

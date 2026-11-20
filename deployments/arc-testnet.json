@@ -1,0 +1,22 @@
+{
+  "network": "arcTestnet",
+  "chainId": 5042002,
+  "deployer": "0x73cc6BD174543bE6F2Fb40DA7C3C041ceB8c0b1d",
+  "contracts": {
+    "FinFlowTreasury": {
+      "address": "0x41BF49FD0606e525b73866BF54e063De5556F4bF",
+      "transactionHash": "0x4bfb0e20714a31b3ea39260456e245f168e8002b2f8e30f7765e6cc8aac3cef8",
+      "blockNumber": 40305528
+    },
+    "FinFlowEscrow": {
+      "address": "0x337bC1C478172A799aBe2134a98aBBAcA3418FF2",
+      "transactionHash": "0x1fd485a05c6a37ec6b5135616f16716fca08c143943ce4946212cb1e3ca11a1e",
+      "blockNumber": 0
+    },
+    "FinFlowBatchPayout": {
+      "address": "0x823B02D1857B191FcA211d9679C8377D8Abe3B09",
+      "transactionHash": "0x60774f93f1419c312fb8c8bae5b2e0d0e3b3d992a9dc76a2dc9e4491501da2c3",
+      "blockNumber": 0
+    }
+  }
+}

@@ -1,5 +1,7 @@
 "use client";
 
+import { ARC_NETWORK_LABEL } from "@/lib/web3/chain";
+
 import { useState } from "react";
 import { useWallet } from "@/lib/web3/WalletProvider";
 import { useTheme } from "@/lib/theme";
@@ -42,7 +44,7 @@ export function Topbar({
         <span className="page-title">{PAGE_TITLES[section] || section}</span>
       </div>
       <div className="topbar-right">
-        <div className="arc-chain">Arc Testnet</div>
+        <div className="arc-chain">{ARC_NETWORK_LABEL}</div>
         <div style={{ position: "relative" }}>
           <button className="topbar-btn notif-dot" onClick={() => setNotifOpen((o) => !o)}>🔔</button>
           <NotifPanel open={notifOpen} onClose={() => setNotifOpen(false)} />

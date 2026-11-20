@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateApiKey } from "@/lib/apiKeyAuth";
 import { rateLimit } from "@/lib/rateLimit";
+import { ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
 
 // Public developer API — auth via `Authorization: Bearer <api key>` from
 // Settings → API & Dev, not a wallet signature. Only creates OPEN-type
@@ -26,8 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   const link = await prisma.paymentLink.create({
-    data: { slug, ownerAddress: owner, title, type: "OPEN", amountNative: "0", note: note || null },
+    data: { slug, chainId: ARC_CHAIN_ID_DECIMAL, ownerAddress: owner, title, type: "OPEN", amountNative: "0", note: note || null },
   });
 
-  return NextResponse.json({ id: link.id, slug: link.slug, url: `/pay/${link.slug}`, type: link.type }, { status: 201 });
+  return NextResponse.json({ id: link.id, slug: link.slug, url: `/pay/${link.slug}`, type: link.type, chainId: ARC_CHAIN_ID_DECIMAL }, { status: 201 });
 }

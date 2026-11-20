@@ -8,7 +8,8 @@ import { BrandedQRCode } from "@/components/BrandedQRCode";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getTreasuryContract } from "@/lib/web3/contracts";
 import { usdcToWei, formatUsdc, shortAddr } from "@/lib/web3/format";
-import { explorerTxUrl } from "@/lib/web3/chain";
+import { explorerTxUrl, ARC_NETWORK_LABEL, ARC_CHAIN_ID_DECIMAL } from "@/lib/web3/chain";
+import { arcTransactionOverrides } from "@/lib/web3/gas";
 import type { ClientPaymentLink } from "@/lib/types";
 
 export default function PayLinkPage({ params }: { params: { slug: string } }) {
@@ -39,13 +40,16 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
 
     setPaying(true);
     try {
+      if (link.chainId !== ARC_CHAIN_ID_DECIMAL) throw new Error("This payment link belongs to a different network");
       const signer = await getSigner();
+      const gas = await arcTransactionOverrides(signer);
 
-      if (link.invoice) {
+      if (link.type === "ONE_TIME") {
+        if (!link.invoice?.chainInvoiceId) throw new Error("This invoice is unavailable");
         const treasury = getTreasuryContract(signer);
         showToast("✍️", "Confirm the payment in your wallet…");
-        const tx = await treasury.payInvoice(link.invoice.chainInvoiceId, { value: BigInt(link.amountNative) });
-        showToast("⏳", "Waiting for confirmation on Arc Testnet…");
+        const tx = await treasury.payInvoice(link.invoice.chainInvoiceId, { ...gas, value: BigInt(link.amountNative) });
+        showToast("⏳", `Waiting for confirmation on ${ARC_NETWORK_LABEL}…`);
         await tx.wait();
         setPaidTx(tx.hash);
 
@@ -55,6 +59,7 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
         // daily cron reconciliation pass.
         if (link.invoiceId) await fetch(`/api/invoices/${link.invoiceId}/sync`, { method: "POST" }).catch(() => {});
       } else {
+        if (link.type !== "OPEN") throw new Error("This payment link type is unavailable");
         if (!openAmount || Number(openAmount) <= 0) {
           showToast("❌", "Enter an amount.", "error");
           setPaying(false);
@@ -66,8 +71,8 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
         // Treasury is single-owner (only its owner can withdraw funds it
         // holds), so routing arbitrary merchants' Open Amount payments
         // through it would trap their money under someone else's key.
-        const tx = await signer.sendTransaction({ to: link.ownerAddress, value: usdcToWei(openAmount) });
-        showToast("⏳", "Waiting for confirmation on Arc Testnet…");
+        const tx = await signer.sendTransaction({ ...gas, to: link.ownerAddress, value: usdcToWei(openAmount) });
+        showToast("⏳", `Waiting for confirmation on ${ARC_NETWORK_LABEL}…`);
         await tx.wait();
         setPaidTx(tx.hash);
         await fetch(`/api/payment-links/${params.slug}`, { method: "POST" });
@@ -106,7 +111,7 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/finflow-mark.svg" alt="FinFlow" width={40} height={40} style={{ borderRadius: 10, marginBottom: 8 }} />
         <div className="ff-logo" style={{ color: "var(--ink)", fontSize: "1.6rem" }}>Fin<span style={{ color: "var(--accent)" }}>Flow</span></div>
-        <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>Secure payment on Arc Testnet</div>
+        <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>Secure payment on {ARC_NETWORK_LABEL}</div>
       </div>
 
       <div className="card" style={{ marginBottom: 20 }}>
@@ -149,7 +154,7 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
               )}
               <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
                 <span style={{ color: "var(--ink3)" }}>Currency</span>
-                <span style={{ color: "var(--ink)", fontWeight: 500 }}>USDC (native, Arc Testnet)</span>
+                <span style={{ color: "var(--ink)", fontWeight: 500 }}>USDC (native, {ARC_NETWORK_LABEL})</span>
               </div>
             </div>
           )}
@@ -182,7 +187,7 @@ export default function PayLinkPage({ params }: { params: { slug: string } }) {
                 </button>
               )}
               <div style={{ fontSize: 11, color: "var(--ink3)", textAlign: "center", marginTop: 12 }}>
-                Non-custodial — you approve this transaction directly from your wallet on Arc Testnet.
+                Non-custodial — you approve this transaction directly from your wallet on {ARC_NETWORK_LABEL}.
               </div>
             </>
           )}

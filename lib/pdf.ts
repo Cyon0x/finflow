@@ -1,7 +1,7 @@
 import { weiToUsdc } from "./web3/format";
 import type { ClientInvoice } from "./types";
 import { TREASURY_ADDRESS } from "./web3/contracts";
-import { explorerTxUrl } from "./web3/chain";
+import { explorerTxUrl, ARC_NETWORK_LABEL } from "./web3/chain";
 
 // jsPDF (~280kB) is loaded on demand, only when someone actually clicks
 // "PDF" — not bundled into every /invoices page load.
@@ -16,7 +16,7 @@ export async function downloadInvoicePdf(invoice: ClientInvoice, merchantLabel =
   doc.text("FinFlow", left, y);
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-  doc.text("Stablecoin invoice — settled in USDC on Arc Testnet", left, y + 18);
+  doc.text(`Stablecoin invoice — USDC on ${ARC_NETWORK_LABEL}`, left, y + 18);
 
   y += 56;
   doc.setDrawColor(220);
